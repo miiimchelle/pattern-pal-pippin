@@ -58,16 +58,16 @@ function App() {
 
       {/* Corner decorations */}
       <div className="absolute top-8 left-8 text-neutral-800 font-mono text-xs">
-        <p>v2.0.26</p>
+        <p>v0.0.1</p>
       </div>
       <div className="absolute top-8 right-8 text-neutral-800 font-mono text-xs">
         <p>FEB 2026</p>
       </div>
       <div className="absolute bottom-8 left-8 text-neutral-800 font-mono text-xs">
-        <p>48°N 11°E</p>
+        <p>50°N 6°E</p>
       </div>
       <div className="absolute bottom-8 right-8 text-neutral-800 font-mono text-xs">
-        <p>MUNICH</p>
+        <p>COLOGNE</p>
       </div>
 
       {/* Bottom line */}

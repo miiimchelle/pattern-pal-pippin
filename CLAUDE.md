@@ -19,12 +19,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development Commands
 
-<!-- Add commands as you set up the project -->
-<!-- Examples: -->
-<!-- - `npm install` - Install dependencies -->
-<!-- - `npm run dev` - Start development server -->
-<!-- - `npm test` - Run tests -->
-<!-- - `npm run lint` - Run linter -->
+- `npm install` - Install dependencies
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check formatting
+- `npm test` - Run tests in watch mode
+- `npm run test:run` - Run tests once
 
 ## Architecture
 

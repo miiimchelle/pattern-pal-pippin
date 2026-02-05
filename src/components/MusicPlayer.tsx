@@ -23,6 +23,9 @@ export default function MusicPlayer() {
   const [showPlaylist, setShowPlaylist] = useState(false)
   const [isMinimized, setIsMinimized] = useState(true)
   const [isClosed, setIsClosed] = useState(false)
+  const [position, setPosition] = useState({ x: 24, y: 24 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragOffset = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     const audio = audioRef.current
@@ -129,6 +132,39 @@ export default function MusicPlayer() {
     }
   }, [isPlaying])
 
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    setIsDragging(true)
+    dragOffset.current = {
+      x: e.clientX + position.x,
+      y: e.clientY + position.y,
+    }
+  }
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({
+        x: dragOffset.current.x - e.clientX,
+        y: dragOffset.current.y - e.clientY,
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
+
   const togglePlay = () => {
     if (!audioRef.current) return
     if (isPlaying) {
@@ -190,7 +226,10 @@ export default function MusicPlayer() {
   // Closed state - show small floating button to reopen
   if (isClosed) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div
+        className="fixed z-50"
+        style={{ bottom: position.y, right: position.x }}
+      >
         <audio ref={audioRef} src={PLAYLIST[currentTrack].file} preload="metadata" />
         <button
           onClick={() => setIsClosed(false)}
@@ -213,7 +252,10 @@ export default function MusicPlayer() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div
+      className="fixed z-50"
+      style={{ bottom: position.y, right: position.x }}
+    >
       <audio ref={audioRef} src={PLAYLIST[currentTrack].file} preload="metadata" />
 
       {/* Main Winamp container */}
@@ -229,10 +271,11 @@ export default function MusicPlayer() {
       >
         {/* Title bar */}
         <div
-          className="flex items-center justify-between px-3 py-2 cursor-pointer"
+          className="flex items-center justify-between px-3 py-2 cursor-move"
           style={{
             background: 'linear-gradient(180deg, #4a6a8a 0%, #2a4a6a 50%, #1a3a5a 100%)',
           }}
+          onMouseDown={handleMouseDown}
           onDoubleClick={() => setIsMinimized(!isMinimized)}
         >
           <div className="flex items-center gap-2">

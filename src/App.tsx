@@ -1,4 +1,5 @@
 import Hero from './components/Hero'
+import MusicPlayer from './components/MusicPlayer'
 
 function FloatingOrb({ delay, size, x, y }: { delay: number; size: number; x: number; y: number }) {
   return (
@@ -72,6 +73,9 @@ function App() {
 
       {/* Bottom line */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
+
+      {/* Music Player */}
+      <MusicPlayer />
 
       <style>{`
         @keyframes scan {

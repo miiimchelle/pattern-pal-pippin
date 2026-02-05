@@ -122,16 +122,35 @@ export default function Hero() {
         <div className="h-px w-20 bg-gradient-to-l from-transparent to-orange-500/50" />
       </div>
 
-      <pre className="text-neutral-600 text-base text-left" style={{ fontFamily: "'Roboto Mono', monospace" }}>
+      <pre
+        className="text-neutral-600 text-base text-left"
+        style={{ fontFamily: "'Roboto Mono', monospace" }}
+      >
         <code>
           <span className="text-orange-400">const</span> hackathon = {'{'}
           {'\n'}
-          {'  '}<span className="text-cyan-400">team</span>: <span className="text-green-400">"Denkwerk"</span>,{'\n'}
-          {'  '}<span className="text-cyan-400">vibes</span>: <span className="text-green-400">"increasing"</span>,{'\n'}
-          {'  '}<span className="text-cyan-400">energy</span>: <span className="text-amber-400">Infinity</span>,{'\n'}
+          {'  '}
+          <span className="text-cyan-400">team</span>:{' '}
+          <span className="text-green-400">"Denkwerk"</span>,{'\n'}
+          {'  '}
+          <span className="text-cyan-400">vibes</span>:{' '}
+          <span className="text-green-400">"increasing"</span>,{'\n'}
+          {'  '}
+          <span className="text-cyan-400">energy</span>:{' '}
+          <span className="text-amber-400">Infinity</span>,{'\n'}
           {'}'}
         </code>
       </pre>
+
+      <a
+        href="https://www.intodesignsystems.com/hackathon"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-10 px-8 py-3 font-mono text-sm tracking-wider uppercase border border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400 transition-all duration-300 relative group"
+      >
+        <span className="relative z-10">Show Hackathon Event</span>
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/0 via-orange-500/5 to-orange-500/0 group-hover:via-orange-500/20 transition-all duration-300" />
+      </a>
 
       <div className="mt-16 flex items-center gap-6">
         <div className="h-px w-16 bg-gradient-to-r from-transparent to-neutral-700" />

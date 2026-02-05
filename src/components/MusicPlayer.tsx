@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 const PLAYLIST = [
   { title: 'JUST BUILD IT', file: '/just_build_it.mp3' },
-  // { title: 'VIBE MODE', file: '/vibe_mode.mp3' },
+  { title: 'MAKE NO MISTAKE', file: '/make_no_mistake.mp3' },
   // { title: 'HACKATHON ANTHEM', file: '/hackathon_anthem.mp3' },
 ]
 
@@ -226,10 +226,7 @@ export default function MusicPlayer() {
   // Closed state - show small floating button to reopen
   if (isClosed) {
     return (
-      <div
-        className="fixed z-50"
-        style={{ bottom: position.y, right: position.x }}
-      >
+      <div className="fixed z-50" style={{ bottom: position.y, right: position.x }}>
         <audio ref={audioRef} src={PLAYLIST[currentTrack].file} preload="metadata" />
         <button
           onClick={() => setIsClosed(false)}
@@ -252,10 +249,7 @@ export default function MusicPlayer() {
   }
 
   return (
-    <div
-      className="fixed z-50"
-      style={{ bottom: position.y, right: position.x }}
-    >
+    <div className="fixed z-50" style={{ bottom: position.y, right: position.x }}>
       <audio ref={audioRef} src={PLAYLIST[currentTrack].file} preload="metadata" />
 
       {/* Main Winamp container */}

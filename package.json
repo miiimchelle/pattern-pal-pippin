@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run --reporter=dot --no-color 2>&1 | grep -E '(passed|failed|·)'",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "react": "^19.2.0",

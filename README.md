@@ -35,6 +35,7 @@ npm run build
 | `npm run format:check` | Check formatting |
 | `npm test` | Run tests in watch mode |
 | `npm run test:run` | Run tests once |
+| `npm run deploy` | Deploy to Vercel |
 
 ## Project Structure
 

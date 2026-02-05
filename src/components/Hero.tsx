@@ -122,7 +122,7 @@ export default function Hero() {
         <div className="h-px w-20 bg-gradient-to-l from-transparent to-orange-500/50" />
       </div>
 
-      <pre className="text-neutral-600 text-xl text-left" style={{ fontFamily: "'Roboto Mono', monospace" }}>
+      <pre className="text-neutral-600 text-base text-left" style={{ fontFamily: "'Roboto Mono', monospace" }}>
         <code>
           <span className="text-orange-400">const</span> hackathon = {'{'}
           {'\n'}
@@ -133,13 +133,13 @@ export default function Hero() {
         </code>
       </pre>
 
-      <div className="mt-10 flex items-center gap-4">
-        <div className="h-px w-12 bg-neutral-800" />
-        <DenkwerkLogo className="h-16 w-auto text-neutral-400" />
-        <div className="h-px w-12 bg-neutral-800" />
+      <div className="mt-16 flex items-center gap-6">
+        <div className="h-px w-16 bg-gradient-to-r from-transparent to-neutral-700" />
+        <DenkwerkLogo className="h-28 w-auto text-neutral-300" />
+        <div className="h-px w-16 bg-gradient-to-l from-transparent to-neutral-700" />
       </div>
 
-      <div className="mt-8 flex items-center gap-2 text-neutral-700 font-mono text-xs">
+      <div className="mt-6 flex items-center gap-2 text-neutral-600 font-mono text-xs">
         <span className="animate-pulse">●</span>
         <span>building the future, one component at a time</span>
       </div>

@@ -9,8 +9,9 @@ function DenkwerkLogo({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <text
-        x="0"
+        x="29"
         y="11"
+        textAnchor="middle"
         fontFamily="system-ui, sans-serif"
         fontWeight="700"
         fontSize="12"
@@ -19,8 +20,9 @@ function DenkwerkLogo({ className }: { className?: string }) {
         DENK
       </text>
       <text
-        x="0"
+        x="29"
         y="25"
+        textAnchor="middle"
         fontFamily="system-ui, sans-serif"
         fontWeight="700"
         fontSize="12"
@@ -120,24 +122,16 @@ export default function Hero() {
         <div className="h-px w-20 bg-gradient-to-l from-transparent to-orange-500/50" />
       </div>
 
-      <div className="font-mono text-neutral-600 text-sm space-y-1">
-        <p>
+      <pre className="text-neutral-600 text-xl text-left" style={{ fontFamily: "'Roboto Mono', monospace" }}>
+        <code>
           <span className="text-orange-400">const</span> hackathon = {'{'}
-        </p>
-        <p className="pl-4">
-          <span className="text-cyan-400">team</span>:{' '}
-          <span className="text-green-400">"Denkwerk"</span>,
-        </p>
-        <p className="pl-4">
-          <span className="text-cyan-400">vibes</span>:{' '}
-          <span className="text-green-400">"increasing"</span>,
-        </p>
-        <p className="pl-4">
-          <span className="text-cyan-400">energy</span>:{' '}
-          <span className="text-amber-400">Infinity</span>,
-        </p>
-        <p>{'}'}</p>
-      </div>
+          {'\n'}
+          {'  '}<span className="text-cyan-400">team</span>: <span className="text-green-400">"Denkwerk"</span>,{'\n'}
+          {'  '}<span className="text-cyan-400">vibes</span>: <span className="text-green-400">"increasing"</span>,{'\n'}
+          {'  '}<span className="text-cyan-400">energy</span>: <span className="text-amber-400">Infinity</span>,{'\n'}
+          {'}'}
+        </code>
+      </pre>
 
       <div className="mt-10 flex items-center gap-4">
         <div className="h-px w-12 bg-neutral-800" />

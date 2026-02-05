@@ -51,4 +51,4 @@ src/
 
 ## Team
 
-**Team Denkwerk** - Munich, Germany
+**Team Denkwerk** - Cologne, Germany

@@ -10,7 +10,7 @@ describe('App', () => {
 
   it('renders corner decorations', () => {
     render(<App />)
-    expect(screen.getByText('v2.0.26')).toBeInTheDocument()
-    expect(screen.getByText('MUNICH')).toBeInTheDocument()
+    expect(screen.getByText('v0.0.1')).toBeInTheDocument()
+    expect(screen.getByText('COLOGNE')).toBeInTheDocument()
   })
 })

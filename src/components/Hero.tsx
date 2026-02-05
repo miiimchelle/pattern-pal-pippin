@@ -14,7 +14,7 @@ function DenkwerkLogo({ className }: { className?: string }) {
         fontFamily="system-ui, sans-serif"
         fontWeight="700"
         fontSize="12"
-        letterSpacing="0.22em"
+        letterSpacing="0.12em"
       >
         DENK
       </text>
@@ -130,7 +130,7 @@ export default function Hero() {
         </p>
         <p className="pl-4">
           <span className="text-cyan-400">vibes</span>:{' '}
-          <span className="text-green-400">"immaculate"</span>,
+          <span className="text-green-400">"increasing"</span>,
         </p>
         <p className="pl-4">
           <span className="text-cyan-400">energy</span>:{' '}

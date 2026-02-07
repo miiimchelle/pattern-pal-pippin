@@ -81,6 +81,28 @@ interface FrameDetail {
   depth: number;
 }
 
+interface TeamFrameMatch {
+  teamFrameId: string;
+  teamFrameName: string;
+  localFrameId: string;
+  localFrameName: string;
+  similarity: number;
+}
+
+interface TeamFileResult {
+  fileKey: string;
+  fileName: string;
+  consistency: number;
+  matches: TeamFrameMatch[];
+}
+
+interface SelectedFrameScanResult {
+  selectedFrame: FrameFingerprint;
+  teamFileResults: TeamFileResult[];
+  libraryMatches: LibraryMatch[];
+  overallConsistency: number;
+}
+
 interface PluginSettings {
   token: string;
   libraryUrls: string[];
@@ -352,6 +374,33 @@ function findLibraryMatches(
     fileKey: s.fp.fileKey,
     fileUrl: s.fp.fileUrl,
   }));
+}
+
+// Best similarity of a frame to any frame in otherTeamFrames (0-100). Returns 100 if otherTeamFrames is empty.
+function computeTeamConsistencyForFrame(
+  frame: FrameFingerprint,
+  otherTeamFrames: FrameFingerprint[],
+): number {
+  if (otherTeamFrames.length === 0) return 100;
+  let best = 0;
+  for (const other of otherTeamFrames) {
+    const sim = computeSimilarity(frame, other);
+    if (sim > best) best = sim;
+  }
+  return best;
+}
+
+// Average team consistency for a group of frames (0-100).
+function computeTeamConsistencyForGroup(
+  frames: FrameFingerprint[],
+  otherTeamFrames: FrameFingerprint[],
+): number {
+  if (frames.length === 0) return 100;
+  const sum = frames.reduce(
+    (acc, f) => acc + computeTeamConsistencyForFrame(f, otherTeamFrames),
+    0,
+  );
+  return Math.round(sum / frames.length);
 }
 
 // Cluster frames by pairwise similarity, threshold = minimum % to belong to a cluster
@@ -802,104 +851,118 @@ async function fetchFileFrames(
 
 // ==================== MAIN SCAN ====================
 
-async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
-  const localFrames = scanCurrentPage();
+async function performScan(settings: PluginSettings): Promise<SelectedFrameScanResult> {
+  if (!settings.token || !settings.teamId) {
+    throw new Error(
+      'Token and Team ID are required. Add them in Settings to compare against other team files.',
+    );
+  }
 
-  // Fetch library components and fingerprints if token provided
-  const allLibraryComponents: LibraryComponent[] = [];
+  const sel = figma.currentPage.selection;
+  if (sel.length !== 1 || sel[0].type !== 'FRAME') {
+    throw new Error('Select a single frame to scan.');
+  }
+
+  const selectedFp = fingerprint(sel[0] as FrameNode);
+
+  figma.ui.postMessage({
+    type: 'scan-progress',
+    payload: { current: 0, total: 1, fileName: 'Discovering team files...' },
+  });
+  const teamFiles = await discoverTeamFiles(settings.teamId, settings.token);
+  const currentFileKey = typeof figma.fileKey !== 'undefined' ? figma.fileKey : null;
+  const otherFiles = teamFiles.filter((f) => f.fileKey !== currentFileKey);
+
+  const fileFrameMap: Map<string, { fileName: string; frames: FrameFingerprint[] }> = new Map();
+  const total = otherFiles.length;
+  for (let i = 0; i < otherFiles.length; i++) {
+    const file = otherFiles[i];
+    figma.ui.postMessage({
+      type: 'scan-progress',
+      payload: { current: i + 1, total, fileName: file.fileName },
+    });
+    const frames = await fetchFileFrames(file.fileKey, file.fileName, settings.token);
+    if (frames.length > 0) {
+      fileFrameMap.set(file.fileKey, { fileName: file.fileName, frames });
+    }
+  }
+
+  const matchThreshold = 50;
+  const teamFileResults: TeamFileResult[] = [];
+
+  for (const [fileKey, { fileName, frames: teamFrames }] of fileFrameMap) {
+    const matches: TeamFrameMatch[] = [];
+
+    for (const teamFrame of teamFrames) {
+      const sim = computeSimilarity(selectedFp, teamFrame);
+      if (sim > matchThreshold) {
+        matches.push({
+          teamFrameId: teamFrame.id,
+          teamFrameName: teamFrame.name,
+          localFrameId: selectedFp.id,
+          localFrameName: selectedFp.name,
+          similarity: Math.round(sim),
+        });
+      }
+    }
+
+    if (matches.length === 0) continue;
+
+    matches.sort((a, b) => b.similarity - a.similarity);
+    const consistency = Math.round(
+      Math.max(...matches.map((m) => m.similarity)),
+    );
+
+    teamFileResults.push({ fileKey, fileName, consistency, matches });
+  }
+
+  teamFileResults.sort((a, b) => b.consistency - a.consistency);
+
+  let libraryMatches: LibraryMatch[] = [];
   const allLibraryFingerprints: LibraryComponentFingerprint[] = [];
 
-  if (settings.token && settings.libraryUrls.length > 0) {
+  if (settings.libraryUrls.length > 0) {
     for (const url of settings.libraryUrls) {
       const fileKey = extractFileKey(url);
       if (!fileKey) continue;
-
       const fileData = await fetchFigmaFile(fileKey, url, settings.token);
       if (fileData) {
-        allLibraryComponents.push(...fileData.components);
         allLibraryFingerprints.push(...fileData.fingerprints);
       }
     }
+    libraryMatches = findLibraryMatches(
+      [selectedFp],
+      allLibraryFingerprints,
+      50,
+    );
   }
 
-  // Cluster frames by structural similarity (60% threshold)
-  const clusters = clusterFrames(localFrames, 60);
+  let overallConsistency: number;
+  const teamAvg =
+    teamFileResults.length > 0
+      ? teamFileResults.reduce((sum, r) => sum + r.consistency, 0) / teamFileResults.length
+      : 0;
+  const libraryBest =
+    libraryMatches.length > 0
+      ? Math.max(...libraryMatches.map((m) => m.similarity))
+      : 0;
 
-  // Also find single frames that match library components
-  const clusteredIds = new Set(clusters.flatMap((c) => c.frames.map((f) => f.id)));
-  const unclustered = localFrames.filter((f) => !clusteredIds.has(f.id));
-
-  // Build results with library matching
-  const results: PatternGroup[] = [];
-
-  for (const cluster of clusters) {
-    const { frames, consistency } = cluster;
-
-    // Find which library components are used in these frames (by name)
-    const usedComponentNames = new Set<string>();
-    frames.forEach((f) => f.componentNames.forEach((n) => usedComponentNames.add(n)));
-    const componentUsage = allLibraryComponents.filter((lc) => usedComponentNames.has(lc.name));
-
-    // Find name matches (fuzzy)
-    const nameMatches: LibraryComponent[] = [];
-    for (const frame of frames) {
-      for (const libComp of allLibraryComponents) {
-        const score = fuzzyMatch(frame.name, libComp.name);
-        if (score >= 0.5 && !nameMatches.some((m) => m.id === libComp.id)) {
-          nameMatches.push(libComp);
-        }
-      }
-    }
-
-    // Structural comparison against library components
-    const libraryMatches = findLibraryMatches(frames, allLibraryFingerprints);
-
-    const label = `${frames[0].width}x${frames[0].height}_${consistency}%`;
-    results.push({
-      fingerprint: label,
-      frames,
-      consistency,
-      componentUsage,
-      nameMatches,
-      libraryMatches,
-    });
+  if (teamFileResults.length > 0 && libraryMatches.length > 0) {
+    overallConsistency = (teamAvg + libraryBest) / 2;
+  } else if (teamFileResults.length > 0) {
+    overallConsistency = teamAvg;
+  } else if (libraryMatches.length > 0) {
+    overallConsistency = libraryBest;
+  } else {
+    overallConsistency = 0;
   }
 
-  // Add unclustered frames that still have library matches
-  for (const frame of unclustered) {
-    const usedNames = new Set(frame.componentNames);
-    const componentUsage = allLibraryComponents.filter((lc) => usedNames.has(lc.name));
-
-    const nameMatches: LibraryComponent[] = [];
-    for (const libComp of allLibraryComponents) {
-      const score = fuzzyMatch(frame.name, libComp.name);
-      if (score >= 0.5) nameMatches.push(libComp);
-    }
-
-    const libraryMatches = findLibraryMatches([frame], allLibraryFingerprints);
-
-    if (componentUsage.length > 0 || nameMatches.length > 0 || libraryMatches.length > 0) {
-      results.push({
-        fingerprint: `${frame.width}x${frame.height}_single`,
-        frames: [frame],
-        consistency: 100,
-        componentUsage,
-        nameMatches,
-        libraryMatches,
-      });
-    }
-  }
-
-  // Sort by relevance
-  results.sort((a, b) => {
-    const topMatchA = a.libraryMatches.length > 0 ? a.libraryMatches[0].similarity : 0;
-    const topMatchB = b.libraryMatches.length > 0 ? b.libraryMatches[0].similarity : 0;
-    const scoreA = a.consistency + a.frames.length * 5 + a.componentUsage.length * 3 + topMatchA;
-    const scoreB = b.consistency + b.frames.length * 5 + b.componentUsage.length * 3 + topMatchB;
-    return scoreB - scoreA;
-  });
-
-  return results;
+  return {
+    selectedFrame: selectedFp,
+    teamFileResults,
+    libraryMatches,
+    overallConsistency: Math.round(overallConsistency),
+  };
 }
 
 async function performTeamScan(settings: PluginSettings): Promise<PatternGroup[]> {
@@ -1023,7 +1086,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       try {
         const settings = (msg.payload as PluginSettings) || { token: '', libraryUrls: [], teamId: '' };
         const results = await performScan(settings);
-        figma.ui.postMessage({ type: 'scan-results', payload: results });
+        figma.ui.postMessage({ type: 'scan-file-results', payload: results });
       } catch (err) {
         figma.ui.postMessage({ type: 'error', payload: `Scan failed: ${err}` });
       }

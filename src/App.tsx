@@ -1,12 +1,17 @@
-import { usePluginMessages } from './hooks/usePluginMessages';
+import { useState } from 'react';
+import { usePluginMessages, type PatternGroup } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
+import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
+import { FrameDetailPanel } from './components/FrameDetailPanel';
 import { Settings } from './components/Settings';
 
 function App() {
   const {
     results,
+    selectedFrameScanResult,
     isScanning,
     scanProgress,
+    selectedFrame,
     settings,
     showSettings,
     setShowSettings,
@@ -19,13 +24,24 @@ function App() {
     saveSettings,
   } = usePluginMessages();
 
-  const handleFrameClick = (frameId: string, fileKey?: string) => {
+  const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
+  const [selectedFrameName, setSelectedFrameName] = useState<string | null>(null);
+
+  const handleFrameClick = (frameId: string, fileKey: string | undefined, group: PatternGroup) => {
+    setSelectedGroup(group);
+    const clickedFrame = group.frames.find((f) => f.id === frameId);
+    setSelectedFrameName(clickedFrame?.name || null);
     if (fileKey) {
       openInFigma(`https://www.figma.com/file/${fileKey}`);
     } else {
       zoomToFrame(frameId);
       inspectFrame(frameId);
     }
+  };
+
+  const handleBackFromDetail = () => {
+    setSelectedGroup(null);
+    setSelectedFrameName(null);
   };
 
   return (
@@ -69,11 +85,15 @@ function App() {
           <div className="p-4 flex flex-col gap-2">
             <button
               onClick={scan}
-              disabled={isScanning}
+              disabled={isScanning || !selectedFrame}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors"
+              title="Scan selected frame and compare to team files and design library"
             >
-              {isScanning && !scanProgress ? 'Scanning...' : 'Scan Current Page'}
+              {isScanning && !scanProgress ? 'Scanning...' : 'Scan Selected Frame'}
             </button>
+            {!selectedFrame && (
+              <p className="text-xs text-gray-500">Select a frame to scan.</p>
+            )}
             {settings.teamId && settings.token && (
               <button
                 onClick={scanTeam}
@@ -98,18 +118,33 @@ function App() {
               </div>
             )}
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-            {!settings.token && (
+            {(!settings.token || !settings.teamId) && (
               <p className="text-xs text-amber-600 mt-1">
-                Add your Figma token in settings to enable library matching
+                Add your Figma token and Team ID in settings to scan and compare against other team files
               </p>
             )}
           </div>
           <div className="flex-1 overflow-auto">
-            <PatternResults
-              groups={results}
-              onFrameClick={handleFrameClick}
-              onOpenInFigma={openInFigma}
-            />
+            {selectedGroup ? (
+              <FrameDetailPanel
+                frame={selectedFrame}
+                group={selectedGroup}
+                frameName={selectedFrameName || undefined}
+                onBack={handleBackFromDetail}
+                onOpenInFigma={openInFigma}
+              />
+            ) : selectedFrameScanResult ? (
+              <SelectedFrameScanResults
+                result={selectedFrameScanResult}
+                onOpenInFigma={openInFigma}
+              />
+            ) : (
+              <PatternResults
+                groups={results}
+                onFrameClick={handleFrameClick}
+                onOpenInFigma={openInFigma}
+              />
+            )}
           </div>
         </div>
       )}

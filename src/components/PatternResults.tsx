@@ -3,7 +3,7 @@ import { MatchDetails } from './MatchDetails';
 
 interface Props {
   groups: PatternGroup[];
-  onFrameClick: (frameId: string, fileKey?: string) => void;
+  onFrameClick: (frameId: string, fileKey: string | undefined, group: PatternGroup) => void;
   onOpenInFigma: (url: string) => void;
 }
 
@@ -45,7 +45,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-red-100 text-red-700'
                   }`}
-                  title="Structural consistency between frames in this group"
+                  title="Structural consistency between frames within the team files"
                 >
                   {group.consistency}% consistent
                 </span>
@@ -56,7 +56,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
               {group.frames.map((frame) => (
                 <button
                   key={`${frame.fileKey || 'local'}-${frame.id}`}
-                  onClick={() => onFrameClick(frame.id, frame.fileKey)}
+                  onClick={() => onFrameClick(frame.id, frame.fileKey, group)}
                   className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
                 >
                   <span className="truncate flex items-center gap-1.5">

@@ -16,9 +16,24 @@ export interface PatternGroup {
   frames: FrameFingerprint[];
 }
 
+export interface FrameDetail {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  cornerRadius: number | number[];
+  padding: { top: number; right: number; bottom: number; left: number } | null;
+  gap: number | null;
+  layoutMode: string | null;
+  childLayers: { name: string; type: string }[];
+  fills: string[];
+  depth: number;
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -29,6 +44,12 @@ export function usePluginMessages() {
         case 'scan-results':
           setResults(msg.payload);
           setIsScanning(false);
+          break;
+        case 'selection-change':
+          setSelectedFrame(msg.payload);
+          break;
+        case 'frame-detail':
+          setSelectedFrame(msg.payload);
           break;
       }
     };
@@ -50,7 +71,21 @@ export function usePluginMessages() {
     (frameId: string) => {
       postMessage('zoom-to-frame', frameId);
     },
-    [postMessage]
+    [postMessage],
+  );
+
+  const inspectFrame = useCallback(
+    (frameId: string) => {
+      postMessage('inspect-frame', frameId);
+    },
+    [postMessage],
+  );
+
+  const openUrl = useCallback(
+    (url: string) => {
+      postMessage('open-url', url);
+    },
+    [postMessage],
   );
 
   const close = useCallback(() => {
@@ -60,8 +95,11 @@ export function usePluginMessages() {
   return {
     results,
     isScanning,
+    selectedFrame,
     scan,
     zoomToFrame,
+    inspectFrame,
+    openUrl,
     close,
   };
 }

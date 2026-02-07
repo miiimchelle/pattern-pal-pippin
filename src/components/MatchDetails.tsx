@@ -2,6 +2,7 @@ interface LibraryComponent {
   id: string;
   name: string;
   description: string;
+  fileKey: string;
   fileUrl: string;
 }
 
@@ -9,6 +10,12 @@ interface Props {
   componentUsage: LibraryComponent[];
   nameMatches: LibraryComponent[];
   onOpenInFigma: (url: string) => void;
+}
+
+function buildNodeUrl(comp: LibraryComponent): string {
+  // Figma node IDs use ":" which must be URL-encoded as "-" in the URL format
+  const encodedNodeId = comp.id.replace(':', '-');
+  return `https://www.figma.com/design/${comp.fileKey}?node-id=${encodedNodeId}`;
 }
 
 export function MatchDetails({ componentUsage, nameMatches, onOpenInFigma }: Props) {
@@ -28,7 +35,7 @@ export function MatchDetails({ componentUsage, nameMatches, onOpenInFigma }: Pro
             {componentUsage.map((comp) => (
               <button
                 key={comp.id}
-                onClick={() => onOpenInFigma(comp.fileUrl)}
+                onClick={() => onOpenInFigma(buildNodeUrl(comp))}
                 className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-100"
                 title={comp.description || comp.name}
               >
@@ -47,7 +54,7 @@ export function MatchDetails({ componentUsage, nameMatches, onOpenInFigma }: Pro
           {nameMatches.map((match) => (
             <button
               key={match.id}
-              onClick={() => onOpenInFigma(match.fileUrl)}
+              onClick={() => onOpenInFigma(buildNodeUrl(match))}
               className="block text-xs text-amber-600 hover:underline text-left"
             >
               {match.name}

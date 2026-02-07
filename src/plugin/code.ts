@@ -117,8 +117,13 @@ function getComponentInfo(node: SceneNode): { ids: string[]; names: string[] } {
       const mainComponent = n.mainComponent;
       if (mainComponent) {
         ids.push(mainComponent.id);
-        if (mainComponent.name && !names.includes(mainComponent.name)) {
-          names.push(mainComponent.name);
+        // Use parent component set name (e.g. "button") instead of variant name (e.g. "type=default, state=Default, size=default")
+        const displayName =
+          mainComponent.parent && mainComponent.parent.type === 'COMPONENT_SET'
+            ? mainComponent.parent.name
+            : mainComponent.name;
+        if (displayName && !names.includes(displayName)) {
+          names.push(displayName);
         }
       }
     }
@@ -226,7 +231,20 @@ function extractComponentNodes(
   fileUrl: string,
   result: LibraryComponent[],
 ): void {
-  if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+  if (node.type === 'COMPONENT_SET') {
+    // Use the component set name (e.g. "button") and skip its variant children
+    result.push({
+      id: node.id || '',
+      name: node.name || 'Unnamed',
+      description: (node as { description?: string }).description || '',
+      fileKey,
+      fileName,
+      fileUrl,
+    });
+    return; // Don't recurse into variants
+  }
+  if (node.type === 'COMPONENT') {
+    // Only add standalone components (not variants inside a COMPONENT_SET)
     result.push({
       id: node.id || '',
       name: node.name || 'Unnamed',

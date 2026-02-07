@@ -3,19 +3,21 @@ import { useState } from 'react';
 interface Props {
   token: string;
   libraryUrls: string[];
-  onSave: (token: string, urls: string[]) => void;
+  teamId: string;
+  onSave: (token: string, urls: string[], teamId: string) => void;
 }
 
-export function Settings({ token: initialToken, libraryUrls: initialUrls, onSave }: Props) {
+export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, onSave }: Props) {
   const [token, setToken] = useState(initialToken);
   const [urlsText, setUrlsText] = useState(initialUrls.join('\n'));
+  const [teamId, setTeamId] = useState(initialTeamId);
 
   const handleSave = () => {
     const urls = urlsText
       .split('\n')
       .map((u) => u.trim())
       .filter((u) => u.length > 0);
-    onSave(token, urls);
+    onSave(token, urls, teamId);
   };
 
   return (
@@ -33,6 +35,22 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, onSave
         />
         <p className="text-xs text-gray-500 mt-1">
           Get from Figma → Settings → Personal access tokens
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Figma Team ID
+        </label>
+        <input
+          type="text"
+          value={teamId}
+          onChange={(e) => setTeamId(e.target.value)}
+          placeholder="123456789"
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
         </p>
       </div>
 

@@ -15,6 +15,8 @@ export interface FrameFingerprint {
   hasAutoLayout: boolean;
   fillCount: number;
   childTypeDistribution: Record<string, number>;
+  fileKey?: string;
+  fileName?: string;
 }
 
 export interface LibraryComponent {
@@ -57,16 +59,24 @@ export interface FrameDetail {
   depth: number;
 }
 
+export interface ScanProgress {
+  current: number;
+  total: number;
+  fileName: string;
+}
+
 export interface PluginSettings {
   token: string;
   libraryUrls: string[];
+  teamId: string;
 }
 
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
-  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [] });
+  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '' });
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +93,10 @@ export function usePluginMessages() {
         case 'scan-results':
           setResults(msg.payload);
           setIsScanning(false);
+          setScanProgress(null);
+          break;
+        case 'scan-progress':
+          setScanProgress(msg.payload);
           break;
         case 'selection-change':
           setSelectedFrame(msg.payload);
@@ -96,6 +110,7 @@ export function usePluginMessages() {
         case 'error':
           setError(msg.payload);
           setIsScanning(false);
+          setScanProgress(null);
           break;
       }
     };
@@ -108,7 +123,15 @@ export function usePluginMessages() {
   const scan = useCallback(() => {
     setError(null);
     setIsScanning(true);
+    setScanProgress(null);
     postMessage('scan', settings);
+  }, [postMessage, settings]);
+
+  const scanTeam = useCallback(() => {
+    setError(null);
+    setIsScanning(true);
+    setScanProgress(null);
+    postMessage('scan-team', settings);
   }, [postMessage, settings]);
 
   const zoomToFrame = useCallback(
@@ -133,8 +156,8 @@ export function usePluginMessages() {
   );
 
   const saveSettings = useCallback(
-    (token: string, libraryUrls: string[]) => {
-      const newSettings = { token, libraryUrls };
+    (token: string, libraryUrls: string[], teamId: string) => {
+      const newSettings = { token, libraryUrls, teamId };
       setSettings(newSettings);
       postMessage('save-settings', newSettings);
       setShowSettings(false);
@@ -149,12 +172,14 @@ export function usePluginMessages() {
   return {
     results,
     isScanning,
+    scanProgress,
     selectedFrame,
     settings,
     showSettings,
     setShowSettings,
     error,
     scan,
+    scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,

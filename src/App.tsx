@@ -1,33 +1,31 @@
-import { useState } from 'react';
 import { usePluginMessages } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
-import { FrameDetailPanel } from './components/FrameDetailPanel';
-import { ComponentReference } from './components/ComponentReference';
 import { Settings } from './components/Settings';
-
-type Tab = 'patterns' | 'reference';
 
 function App() {
   const {
     results,
     isScanning,
-    selectedFrame,
+    scanProgress,
     settings,
     showSettings,
     setShowSettings,
     error,
     scan,
+    scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
   } = usePluginMessages();
-  const [tab, setTab] = useState<Tab>('patterns');
 
-  const handleFrameClick = (frameId: string) => {
-    zoomToFrame(frameId);
-    inspectFrame(frameId);
-    setTab('reference');
+  const handleFrameClick = (frameId: string, fileKey?: string) => {
+    if (fileKey) {
+      openInFigma(`https://www.figma.com/file/${fileKey}`);
+    } else {
+      zoomToFrame(frameId);
+      inspectFrame(frameId);
+    }
   };
 
   return (
@@ -63,69 +61,57 @@ function App() {
         <Settings
           token={settings.token}
           libraryUrls={settings.libraryUrls}
+          teamId={settings.teamId}
           onSave={saveSettings}
         />
       ) : (
-        <>
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-200">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 flex flex-col gap-2">
             <button
-              onClick={() => setTab('patterns')}
-              className={`flex-1 text-sm py-2 font-medium transition-colors ${
-                tab === 'patterns'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={scan}
+              disabled={isScanning}
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors"
             >
-              Patterns
+              {isScanning && !scanProgress ? 'Scanning...' : 'Scan Current Page'}
             </button>
-            <button
-              onClick={() => setTab('reference')}
-              className={`flex-1 text-sm py-2 font-medium transition-colors ${
-                tab === 'reference'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Reference
-            </button>
+            {settings.teamId && settings.token && (
+              <button
+                onClick={scanTeam}
+                disabled={isScanning}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-medium py-2 px-4 rounded transition-colors"
+              >
+                {isScanning && scanProgress ? 'Scanning Team...' : 'Scan Team Files'}
+              </button>
+            )}
+            {scanProgress && (
+              <div className="mt-1">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span className="truncate mr-2">{scanProgress.fileName}</span>
+                  <span className="shrink-0">{scanProgress.current}/{scanProgress.total}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div
+                    className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                    style={{ width: `${Math.round((scanProgress.current / scanProgress.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+            {!settings.token && (
+              <p className="text-xs text-amber-600 mt-1">
+                Add your Figma token in settings to enable library matching
+              </p>
+            )}
           </div>
-
-          {/* Tab content */}
-          {tab === 'patterns' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="p-4">
-                <button
-                  onClick={scan}
-                  disabled={isScanning}
-                  className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors"
-                >
-                  {isScanning ? 'Scanning...' : 'Scan Current Page'}
-                </button>
-                {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-                {!settings.token && (
-                  <p className="text-xs text-amber-600 mt-2">
-                    Add your Figma token in settings to enable library matching
-                  </p>
-                )}
-              </div>
-              <div className="flex-1 overflow-auto">
-                <PatternResults
-                  groups={results}
-                  onFrameClick={handleFrameClick}
-                  onOpenInFigma={openInFigma}
-                />
-              </div>
-            </div>
-          )}
-
-          {tab === 'reference' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <FrameDetailPanel frame={selectedFrame} />
-              <ComponentReference onOpenUrl={openInFigma} />
-            </div>
-          )}
-        </>
+          <div className="flex-1 overflow-auto">
+            <PatternResults
+              groups={results}
+              onFrameClick={handleFrameClick}
+              onOpenInFigma={openInFigma}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

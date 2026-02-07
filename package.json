@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:ui && npm run build:sandbox",
+    "build:ui": "vite build",
+    "build:sandbox": "vite build --config vite.config.sandbox.ts",
+    "watch": "npm run build && (npm run watch:ui & npm run watch:sandbox)",
+    "watch:ui": "vite build --watch",
+    "watch:sandbox": "vite build --config vite.config.sandbox.ts --watch",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
@@ -19,6 +24,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@figma/plugin-typings": "^1.104.0",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -39,6 +45,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
+    "vite-plugin-singlefile": "^2.3.0",
     "vitest": "^4.0.18"
   }
 }

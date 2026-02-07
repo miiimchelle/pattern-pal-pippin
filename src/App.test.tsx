@@ -15,13 +15,7 @@ describe('App', () => {
     expect(screen.getByTitle('Settings')).toBeInTheDocument()
   })
 
-  it('renders tab buttons', () => {
-    render(<App />)
-    expect(screen.getByRole('button', { name: /Patterns/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Reference/i })).toBeInTheDocument()
-  })
-
-  it('shows Scan Current Page button on Patterns tab by default', () => {
+  it('shows Scan Current Page button', () => {
     render(<App />)
     expect(screen.getByRole('button', { name: /Scan Current Page/i })).toBeInTheDocument()
   })
@@ -35,12 +29,12 @@ describe('App', () => {
     render(<App />)
     await userEvent.click(screen.getByTitle('Settings'))
     expect(screen.getByText(/Figma Personal Access Token/i)).toBeInTheDocument()
+    expect(screen.getByText(/Figma Team ID/i)).toBeInTheDocument()
     expect(screen.getByText(/Save Settings/i)).toBeInTheDocument()
   })
 
-  it('switches to Reference tab and shows frame prompt', async () => {
+  it('does not show Scan Team Files button without token and teamId', () => {
     render(<App />)
-    await userEvent.click(screen.getByRole('button', { name: /Reference/i }))
-    expect(screen.getByText(/Select a frame on the canvas/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Scan Team Files/i })).not.toBeInTheDocument()
   })
 })

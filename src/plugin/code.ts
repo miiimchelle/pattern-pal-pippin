@@ -17,6 +17,8 @@ interface FrameFingerprint {
   hasAutoLayout: boolean;
   fillCount: number;
   childTypeDistribution: Record<string, number>;
+  fileKey?: string;
+  fileName?: string;
 }
 
 interface LibraryComponent {
@@ -82,6 +84,7 @@ interface FrameDetail {
 interface PluginSettings {
   token: string;
   libraryUrls: string[];
+  teamId: string;
 }
 
 interface FigmaFileData {
@@ -618,6 +621,185 @@ async function fetchFigmaFile(
   }
 }
 
+// ==================== TEAM DISCOVERY ====================
+
+interface TeamFile {
+  fileKey: string;
+  fileName: string;
+}
+
+// Rate-limit-aware fetch helper with retry on 429
+async function fetchWithRetry(
+  url: string,
+  token: string,
+  maxRetries = 3,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      headers: { 'X-Figma-Token': token },
+    });
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
+      const waitMs = Math.min(retryAfter * 1000, 120_000);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    return response;
+  }
+  // Final attempt without retry
+  return fetch(url, { headers: { 'X-Figma-Token': token } });
+}
+
+async function fetchTeamProjects(
+  teamId: string,
+  token: string,
+): Promise<{ id: string; name: string }[]> {
+  const response = await fetchWithRetry(
+    `https://api.figma.com/v1/teams/${teamId}/projects`,
+    token,
+  );
+  if (!response.ok) {
+    console.error(`Failed to fetch team projects: ${response.status}`);
+    return [];
+  }
+  const data = await response.json();
+  return (data.projects || []).map((p: { id: string; name: string }) => ({
+    id: String(p.id),
+    name: p.name,
+  }));
+}
+
+async function fetchProjectFiles(
+  projectId: string,
+  token: string,
+): Promise<TeamFile[]> {
+  const response = await fetchWithRetry(
+    `https://api.figma.com/v1/projects/${projectId}/files`,
+    token,
+  );
+  if (!response.ok) {
+    console.error(`Failed to fetch project files: ${response.status}`);
+    return [];
+  }
+  const data = await response.json();
+  return (data.files || []).map((f: { key: string; name: string }) => ({
+    fileKey: f.key,
+    fileName: f.name,
+  }));
+}
+
+async function discoverTeamFiles(
+  teamId: string,
+  token: string,
+): Promise<TeamFile[]> {
+  const projects = await fetchTeamProjects(teamId, token);
+  const allFiles: TeamFile[] = [];
+  for (const project of projects) {
+    const files = await fetchProjectFiles(project.id, token);
+    allFiles.push(...files);
+  }
+  return allFiles;
+}
+
+// Extract top-level FRAME nodes from a REST API file response and build fingerprints
+function extractFrameFingerprints(
+  document: ApiNode,
+  fileKey: string,
+  fileName: string,
+): FrameFingerprint[] {
+  const frames: FrameFingerprint[] = [];
+
+  // Pages are first-level children of the document
+  const pages = document.children || [];
+  for (const page of pages) {
+    if (page.type !== 'CANVAS') continue;
+    const topChildren = page.children || [];
+    for (const child of topChildren) {
+      if (child.type !== 'FRAME') continue;
+
+      const bb = child.absoluteBoundingBox || { width: 0, height: 0 };
+      const w = Math.round(bb.width);
+      const h = Math.round(bb.height);
+      const children = child.children || [];
+
+      const childTypeDist: Record<string, number> = {};
+      for (const c of children) {
+        const t = c.type || 'UNKNOWN';
+        childTypeDist[t] = (childTypeDist[t] || 0) + 1;
+      }
+
+      let cr = 0;
+      if (typeof child.cornerRadius === 'number') {
+        cr = child.cornerRadius;
+      } else if (child.rectangleCornerRadii) {
+        cr = Math.max(...child.rectangleCornerRadii);
+      }
+
+      const visibleFills = (child.fills || []).filter((f) => f.visible !== false);
+      const layoutMode = child.layoutMode || 'NONE';
+
+      // Collect component names from INSTANCE children (shallow walk)
+      const componentNames: string[] = [];
+      function walkForComponents(node: ApiNode) {
+        if (node.type === 'INSTANCE' && node.name) {
+          if (!componentNames.includes(node.name)) {
+            componentNames.push(node.name);
+          }
+        }
+        if (node.children) {
+          for (const c of node.children) walkForComponents(c);
+        }
+      }
+      walkForComponents(child);
+
+      frames.push({
+        id: child.id || '',
+        name: child.name || 'Unnamed',
+        width: w,
+        height: h,
+        childCount: children.length,
+        maxDepth: getApiNodeDepth(child),
+        componentIds: [],
+        componentNames,
+        aspectRatio: h > 0 ? Math.round((w / h) * 100) / 100 : 1,
+        layoutMode,
+        cornerRadius: cr,
+        hasAutoLayout: layoutMode !== 'NONE',
+        fillCount: visibleFills.length,
+        childTypeDistribution: childTypeDist,
+        fileKey,
+        fileName,
+      });
+    }
+  }
+
+  return frames;
+}
+
+// Fetch a file and extract its frames as FrameFingerprints
+async function fetchFileFrames(
+  fileKey: string,
+  fileName: string,
+  token: string,
+): Promise<FrameFingerprint[]> {
+  try {
+    const response = await fetchWithRetry(
+      `https://api.figma.com/v1/files/${fileKey}?depth=3`,
+      token,
+    );
+    if (!response.ok) {
+      console.error(`Failed to fetch file ${fileKey}: ${response.status}`);
+      return [];
+    }
+    const data = await response.json();
+    if (!data.document) return [];
+    return extractFrameFingerprints(data.document, fileKey, data.name || fileName);
+  } catch (err) {
+    console.error(`Error fetching file ${fileKey}:`, err);
+    return [];
+  }
+}
+
 // ==================== MAIN SCAN ====================
 
 async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
@@ -720,6 +902,109 @@ async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
   return results;
 }
 
+async function performTeamScan(settings: PluginSettings): Promise<PatternGroup[]> {
+  if (!settings.token || !settings.teamId) {
+    throw new Error('Token and Team ID are required for team scanning');
+  }
+
+  // Discover all files in the team
+  figma.ui.postMessage({ type: 'scan-progress', payload: { current: 0, total: 1, fileName: 'Discovering team files...' } });
+  const teamFiles = await discoverTeamFiles(settings.teamId, settings.token);
+  if (teamFiles.length === 0) {
+    throw new Error('No files found in team. Check your Team ID and token permissions.');
+  }
+
+  // Collect frames from all files
+  const allFrames: FrameFingerprint[] = [];
+  const total = teamFiles.length;
+
+  for (let i = 0; i < teamFiles.length; i++) {
+    const file = teamFiles[i];
+    figma.ui.postMessage({
+      type: 'scan-progress',
+      payload: { current: i + 1, total, fileName: file.fileName },
+    });
+    const frames = await fetchFileFrames(file.fileKey, file.fileName, settings.token);
+    allFrames.push(...frames);
+  }
+
+  // Also include local frames from the current page
+  const localFrames = scanCurrentPage();
+  allFrames.push(...localFrames);
+
+  // Cluster all frames together (cross-file)
+  const clusters = clusterFrames(allFrames, 60);
+
+  // Filter to only clusters that span multiple files
+  const crossFileClusters = clusters.filter((c) => {
+    const fileKeys = new Set(c.frames.map((f) => f.fileKey || '__local__'));
+    return fileKeys.size >= 2 || c.frames.length >= 2;
+  });
+
+  // Fetch library data for matching
+  const allLibraryComponents: LibraryComponent[] = [];
+  const allLibraryFingerprints: LibraryComponentFingerprint[] = [];
+
+  if (settings.libraryUrls.length > 0) {
+    for (const url of settings.libraryUrls) {
+      const fileKey = extractFileKey(url);
+      if (!fileKey) continue;
+      const fileData = await fetchFigmaFile(fileKey, url, settings.token);
+      if (fileData) {
+        allLibraryComponents.push(...fileData.components);
+        allLibraryFingerprints.push(...fileData.fingerprints);
+      }
+    }
+  }
+
+  // Build results
+  const results: PatternGroup[] = [];
+
+  for (const cluster of crossFileClusters) {
+    const { frames, consistency } = cluster;
+
+    const usedComponentNames = new Set<string>();
+    frames.forEach((f) => f.componentNames.forEach((n) => usedComponentNames.add(n)));
+    const componentUsage = allLibraryComponents.filter((lc) => usedComponentNames.has(lc.name));
+
+    const nameMatches: LibraryComponent[] = [];
+    for (const frame of frames) {
+      for (const libComp of allLibraryComponents) {
+        const score = fuzzyMatch(frame.name, libComp.name);
+        if (score >= 0.5 && !nameMatches.some((m) => m.id === libComp.id)) {
+          nameMatches.push(libComp);
+        }
+      }
+    }
+
+    const libraryMatches = findLibraryMatches(frames, allLibraryFingerprints);
+
+    const fileCount = new Set(frames.map((f) => f.fileKey || '__local__')).size;
+    const label = `${frames[0].width}x${frames[0].height}_${fileCount}files_${consistency}%`;
+    results.push({
+      fingerprint: label,
+      frames,
+      consistency,
+      componentUsage,
+      nameMatches,
+      libraryMatches,
+    });
+  }
+
+  // Sort by relevance (prefer cross-file patterns)
+  results.sort((a, b) => {
+    const filesA = new Set(a.frames.map((f) => f.fileKey || '__local__')).size;
+    const filesB = new Set(b.frames.map((f) => f.fileKey || '__local__')).size;
+    const topMatchA = a.libraryMatches.length > 0 ? a.libraryMatches[0].similarity : 0;
+    const topMatchB = b.libraryMatches.length > 0 ? b.libraryMatches[0].similarity : 0;
+    const scoreA = filesA * 10 + a.consistency + a.frames.length * 5 + topMatchA;
+    const scoreB = filesB * 10 + b.consistency + b.frames.length * 5 + topMatchB;
+    return scoreB - scoreA;
+  });
+
+  return results;
+}
+
 // ==================== MESSAGE HANDLERS ====================
 
 figma.on('selectionchange', () => {
@@ -736,11 +1021,22 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
   switch (msg.type) {
     case 'scan': {
       try {
-        const settings = (msg.payload as PluginSettings) || { token: '', libraryUrls: [] };
+        const settings = (msg.payload as PluginSettings) || { token: '', libraryUrls: [], teamId: '' };
         const results = await performScan(settings);
         figma.ui.postMessage({ type: 'scan-results', payload: results });
       } catch (err) {
         figma.ui.postMessage({ type: 'error', payload: `Scan failed: ${err}` });
+      }
+      break;
+    }
+
+    case 'scan-team': {
+      try {
+        const settings = (msg.payload as PluginSettings) || { token: '', libraryUrls: [], teamId: '' };
+        const results = await performTeamScan(settings);
+        figma.ui.postMessage({ type: 'scan-results', payload: results });
+      } catch (err) {
+        figma.ui.postMessage({ type: 'error', payload: `Team scan failed: ${err}` });
       }
       break;
     }
@@ -782,7 +1078,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       const saved = await figma.clientStorage.getAsync(STORAGE_KEY);
       figma.ui.postMessage({
         type: 'settings-loaded',
-        payload: saved || { token: '', libraryUrls: [] },
+        payload: saved || { token: '', libraryUrls: [], teamId: '' },
       });
       break;
     }

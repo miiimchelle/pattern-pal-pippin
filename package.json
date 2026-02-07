@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:ui && npm run build:sandbox",
+    "build": "npm run build:ui && npm run build:sandbox && node -e \"require('fs').copyFileSync('dist/code.js','code.js')\"",
     "build:ui": "vite build",
     "build:sandbox": "vite build --config vite.config.sandbox.ts",
     "watch": "npm run build && (npm run watch:ui & npm run watch:sandbox)",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@figma/plugin-typings": "^1.123.0",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -45,8 +46,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^4.0.18",
     "vite-plugin-singlefile": "^2.3.0",
-    "@figma/plugin-typings": "^1.104.0"
+    "vitest": "^4.0.18"
   }
 }

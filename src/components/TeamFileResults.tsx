@@ -60,12 +60,7 @@ export function TeamFileResults({ fileResults, onOpenInFigma }: Props) {
                 onClick={() => onOpenInFigma(buildNodeUrl(file.fileKey, match.teamFrameId))}
                 className="text-left px-2 py-1.5 text-sm hover:bg-blue-50 rounded transition-colors flex items-center justify-between gap-2"
               >
-                <div className="flex flex-col min-w-0">
-                  <span className="truncate text-gray-700">{match.teamFrameName}</span>
-                  <span className="text-[11px] text-gray-400 truncate">
-                    matches {match.localFrameName}
-                  </span>
-                </div>
+                <span className="truncate text-gray-700">{match.teamFrameName}</span>
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${similarityColor(match.similarity)}`}
                 >

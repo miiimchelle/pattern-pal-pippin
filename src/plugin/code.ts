@@ -31,21 +31,6 @@ interface PluginSettings {
 // Storage keys
 const STORAGE_KEY = 'pattern-pal-settings';
 
-// #region agent log
-try {
-  fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'code.ts:sandbox-entry',
-      message: 'Sandbox script executing',
-      data: { hypothesisId: 'H1' },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-} catch (_) {}
-// #endregion
-
 // Calculate max depth of node tree
 function getMaxDepth(node: SceneNode, current = 0): number {
   if (!('children' in node) || node.children.length === 0) {
@@ -268,18 +253,4 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
 };
 
 const __html__ = '__HTML_PLACEHOLDER__';
-// #region agent log
-try {
-  fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'code.ts:before-showUI',
-      message: 'Inlined HTML before showUI',
-      data: { hypothesisId: 'H2', htmlLen: __html__.length, runId: 'post-fix' },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-} catch (_) {}
-// #endregion
 figma.showUI(__html__, { width: 400, height: 600 });

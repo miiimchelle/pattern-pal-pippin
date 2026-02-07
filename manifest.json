@@ -2,7 +2,7 @@
   "name": "Pattern Pal",
   "id": "pattern-pal-ids-hackathon-2026",
   "api": "1.0.0",
-  "main": "code.js",
+  "main": "dist/code.js",
   "ui": "dist/index.html",
   "editorType": ["figma"],
   "networkAccess": {

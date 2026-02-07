@@ -40,18 +40,6 @@ export function usePluginMessages() {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'usePluginMessages.ts:ui-mount',
-        message: 'Plugin UI iframe mounted',
-        data: { hypothesisId: 'H3' },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const handler = (event: MessageEvent) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;

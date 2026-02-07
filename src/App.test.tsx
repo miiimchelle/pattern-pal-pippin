@@ -3,14 +3,14 @@ import { describe, it, expect } from 'vitest'
 import App from './App'
 
 describe('App', () => {
-  it('renders the app with Hero', () => {
+  it('renders Pattern Pal header', () => {
     render(<App />)
-    expect(screen.getByText('INTO DESIGN')).toBeInTheDocument()
+    expect(screen.getByText('Pattern Pal')).toBeInTheDocument()
+    expect(screen.getByText(/Find similar patterns/)).toBeInTheDocument()
   })
 
-  it('renders corner decorations', () => {
+  it('renders Scan button', () => {
     render(<App />)
-    expect(screen.getByText('v0.0.1')).toBeInTheDocument()
-    expect(screen.getByText('COLOGNE')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Scan Current Page/i })).toBeInTheDocument()
   })
 })

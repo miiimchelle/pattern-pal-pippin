@@ -6,6 +6,6 @@
   "ui": "dist/index.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["https://ui.shadcn.com"]
+    "allowedDomains": ["https://api.figma.com"]
   }
 }

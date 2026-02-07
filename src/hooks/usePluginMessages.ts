@@ -8,12 +8,24 @@ export interface FrameFingerprint {
   childCount: number;
   maxDepth: number;
   componentIds: string[];
+  componentNames: string[];
   aspectRatio: number;
+}
+
+export interface LibraryComponent {
+  id: string;
+  name: string;
+  description: string;
+  fileKey: string;
+  fileName: string;
+  fileUrl: string;
 }
 
 export interface PatternGroup {
   fingerprint: string;
   frames: FrameFingerprint[];
+  componentUsage: LibraryComponent[];
+  nameMatches: LibraryComponent[];
 }
 
 export interface FrameDetail {
@@ -30,10 +42,22 @@ export interface FrameDetail {
   depth: number;
 }
 
+export interface PluginSettings {
+  token: string;
+  libraryUrls: string[];
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
+  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [] });
+  const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const postMessage = useCallback((type: string, payload?: unknown) => {
+    parent.postMessage({ pluginMessage: { type, payload } }, '*');
+  }, []);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -51,21 +75,26 @@ export function usePluginMessages() {
         case 'frame-detail':
           setSelectedFrame(msg.payload);
           break;
+        case 'settings-loaded':
+          setSettings(msg.payload);
+          break;
+        case 'error':
+          setError(msg.payload);
+          setIsScanning(false);
+          break;
       }
     };
 
     window.addEventListener('message', handler);
+    postMessage('load-settings');
     return () => window.removeEventListener('message', handler);
-  }, []);
-
-  const postMessage = useCallback((type: string, payload?: unknown) => {
-    parent.postMessage({ pluginMessage: { type, payload } }, '*');
-  }, []);
+  }, [postMessage]);
 
   const scan = useCallback(() => {
+    setError(null);
     setIsScanning(true);
-    postMessage('scan');
-  }, [postMessage]);
+    postMessage('scan', settings);
+  }, [postMessage, settings]);
 
   const zoomToFrame = useCallback(
     (frameId: string) => {
@@ -81,9 +110,19 @@ export function usePluginMessages() {
     [postMessage],
   );
 
-  const openUrl = useCallback(
+  const openInFigma = useCallback(
     (url: string) => {
       postMessage('open-url', url);
+    },
+    [postMessage],
+  );
+
+  const saveSettings = useCallback(
+    (token: string, libraryUrls: string[]) => {
+      const newSettings = { token, libraryUrls };
+      setSettings(newSettings);
+      postMessage('save-settings', newSettings);
+      setShowSettings(false);
     },
     [postMessage],
   );
@@ -96,10 +135,15 @@ export function usePluginMessages() {
     results,
     isScanning,
     selectedFrame,
+    settings,
+    showSettings,
+    setShowSettings,
+    error,
     scan,
     zoomToFrame,
     inspectFrame,
-    openUrl,
+    openInFigma,
+    saveSettings,
     close,
   };
 }

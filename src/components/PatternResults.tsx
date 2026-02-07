@@ -1,15 +1,17 @@
 import type { PatternGroup } from '../hooks/usePluginMessages';
+import { MatchDetails } from './MatchDetails';
 
 interface Props {
   groups: PatternGroup[];
   onFrameClick: (frameId: string) => void;
+  onOpenInFigma: (url: string) => void;
 }
 
-export function PatternResults({ groups, onFrameClick }: Props) {
+export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
   if (groups.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
-        No similar patterns found. Try a page with more frames.
+        No patterns found. Try a page with more frames.
       </div>
     );
   }
@@ -19,23 +21,34 @@ export function PatternResults({ groups, onFrameClick }: Props) {
       {groups.map((group) => (
         <div key={group.fingerprint} className="border border-gray-200 rounded-lg p-3">
           <div className="text-sm font-medium text-gray-700 mb-2">
-            {group.frames.length} similar frames
+            {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
             <span className="text-gray-400 ml-2 font-normal">
-              {group.frames[0].width}×{group.frames[0].height}px, {group.frames[0].childCount}{' '}
-              children
+              {group.frames[0].width}×{group.frames[0].height}px
             </span>
           </div>
-          <div className="flex flex-col gap-1">
+
+          <div className="flex flex-col gap-1 mb-2">
             {group.frames.map((frame) => (
               <button
                 key={frame.id}
                 onClick={() => onFrameClick(frame.id)}
-                className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors"
+                className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
               >
-                {frame.name}
+                <span className="truncate">{frame.name}</span>
+                {frame.componentNames && frame.componentNames.length > 0 && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    {frame.componentNames.length} components
+                  </span>
+                )}
               </button>
             ))}
           </div>
+
+          <MatchDetails
+            componentUsage={group.componentUsage || []}
+            nameMatches={group.nameMatches || []}
+            onOpenInFigma={onOpenInFigma}
+          />
         </div>
       ))}
     </div>

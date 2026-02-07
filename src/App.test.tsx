@@ -15,9 +15,14 @@ describe('App', () => {
     expect(screen.getByTitle('Settings')).toBeInTheDocument()
   })
 
-  it('shows Scan Current Page button', () => {
+  it('shows Scan Selected Frame button', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: /Scan Current Page/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Scan Selected Frame/i })).toBeInTheDocument()
+  })
+
+  it('shows select frame hint when no frame selected', () => {
+    render(<App />)
+    expect(screen.getByText(/Select a frame to scan\./)).toBeInTheDocument()
   })
 
   it('shows token reminder when no token configured', () => {

@@ -81,6 +81,28 @@ interface FrameDetail {
   depth: number;
 }
 
+interface TeamFrameMatch {
+  teamFrameId: string;
+  teamFrameName: string;
+  localFrameId: string;
+  localFrameName: string;
+  similarity: number;
+}
+
+interface TeamFileResult {
+  fileKey: string;
+  fileName: string;
+  consistency: number;
+  matches: TeamFrameMatch[];
+}
+
+interface SelectedFrameScanResult {
+  selectedFrame: FrameFingerprint;
+  teamFileResults: TeamFileResult[];
+  libraryMatches: LibraryMatch[];
+  overallConsistency: number;
+}
+
 interface PluginSettings {
   token: string;
   libraryUrls: string[];
@@ -829,14 +851,19 @@ async function fetchFileFrames(
 
 // ==================== MAIN SCAN ====================
 
-async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
+async function performScan(settings: PluginSettings): Promise<SelectedFrameScanResult> {
   if (!settings.token || !settings.teamId) {
     throw new Error(
       'Token and Team ID are required. Add them in Settings to compare against other team files.',
     );
   }
 
-  const localFrames = scanCurrentPage();
+  const sel = figma.currentPage.selection;
+  if (sel.length !== 1 || sel[0].type !== 'FRAME') {
+    throw new Error('Select a single frame to scan.');
+  }
+
+  const selectedFp = fingerprint(sel[0] as FrameNode);
 
   figma.ui.postMessage({
     type: 'scan-progress',
@@ -846,7 +873,7 @@ async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
   const currentFileKey = typeof figma.fileKey !== 'undefined' ? figma.fileKey : null;
   const otherFiles = teamFiles.filter((f) => f.fileKey !== currentFileKey);
 
-  const otherTeamFrames: FrameFingerprint[] = [];
+  const fileFrameMap: Map<string, { fileName: string; frames: FrameFingerprint[] }> = new Map();
   const total = otherFiles.length;
   for (let i = 0; i < otherFiles.length; i++) {
     const file = otherFiles[i];
@@ -855,97 +882,87 @@ async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
       payload: { current: i + 1, total, fileName: file.fileName },
     });
     const frames = await fetchFileFrames(file.fileKey, file.fileName, settings.token);
-    otherTeamFrames.push(...frames);
+    if (frames.length > 0) {
+      fileFrameMap.set(file.fileKey, { fileName: file.fileName, frames });
+    }
   }
 
-  const allLibraryComponents: LibraryComponent[] = [];
+  const matchThreshold = 50;
+  const teamFileResults: TeamFileResult[] = [];
+
+  for (const [fileKey, { fileName, frames: teamFrames }] of fileFrameMap) {
+    const matches: TeamFrameMatch[] = [];
+
+    for (const teamFrame of teamFrames) {
+      const sim = computeSimilarity(selectedFp, teamFrame);
+      if (sim > matchThreshold) {
+        matches.push({
+          teamFrameId: teamFrame.id,
+          teamFrameName: teamFrame.name,
+          localFrameId: selectedFp.id,
+          localFrameName: selectedFp.name,
+          similarity: Math.round(sim),
+        });
+      }
+    }
+
+    if (matches.length === 0) continue;
+
+    matches.sort((a, b) => b.similarity - a.similarity);
+    const consistency = Math.round(
+      Math.max(...matches.map((m) => m.similarity)),
+    );
+
+    teamFileResults.push({ fileKey, fileName, consistency, matches });
+  }
+
+  teamFileResults.sort((a, b) => b.consistency - a.consistency);
+
+  let libraryMatches: LibraryMatch[] = [];
   const allLibraryFingerprints: LibraryComponentFingerprint[] = [];
+
   if (settings.libraryUrls.length > 0) {
     for (const url of settings.libraryUrls) {
       const fileKey = extractFileKey(url);
       if (!fileKey) continue;
       const fileData = await fetchFigmaFile(fileKey, url, settings.token);
       if (fileData) {
-        allLibraryComponents.push(...fileData.components);
         allLibraryFingerprints.push(...fileData.fingerprints);
       }
     }
+    libraryMatches = findLibraryMatches(
+      [selectedFp],
+      allLibraryFingerprints,
+      50,
+    );
   }
 
-  const clusters = clusterFrames(localFrames, 60);
+  let overallConsistency: number;
+  const teamAvg =
+    teamFileResults.length > 0
+      ? teamFileResults.reduce((sum, r) => sum + r.consistency, 0) / teamFileResults.length
+      : 0;
+  const libraryBest =
+    libraryMatches.length > 0
+      ? Math.max(...libraryMatches.map((m) => m.similarity))
+      : 0;
 
-  const clusteredIds = new Set(clusters.flatMap((c) => c.frames.map((f) => f.id)));
-  const unclustered = localFrames.filter((f) => !clusteredIds.has(f.id));
-
-  const results: PatternGroup[] = [];
-
-  for (const cluster of clusters) {
-    const { frames } = cluster;
-    const consistency = computeTeamConsistencyForGroup(frames, otherTeamFrames);
-
-    const usedComponentNames = new Set<string>();
-    frames.forEach((f) => f.componentNames.forEach((n) => usedComponentNames.add(n)));
-    const componentUsage = allLibraryComponents.filter((lc) => usedComponentNames.has(lc.name));
-
-    const nameMatches: LibraryComponent[] = [];
-    for (const frame of frames) {
-      for (const libComp of allLibraryComponents) {
-        const score = fuzzyMatch(frame.name, libComp.name);
-        if (score >= 0.5 && !nameMatches.some((m) => m.id === libComp.id)) {
-          nameMatches.push(libComp);
-        }
-      }
-    }
-
-    const libraryMatches = findLibraryMatches(frames, allLibraryFingerprints);
-
-    results.push({
-      fingerprint: `${frames[0].width}x${frames[0].height}_${consistency}%`,
-      frames,
-      consistency,
-      componentUsage,
-      nameMatches,
-      libraryMatches,
-    });
+  if (teamFileResults.length > 0 && libraryMatches.length > 0) {
+    overallConsistency = (teamAvg + libraryBest) / 2;
+  } else if (teamFileResults.length > 0) {
+    overallConsistency = teamAvg;
+  } else if (libraryMatches.length > 0) {
+    overallConsistency = libraryBest;
+  } else {
+    overallConsistency = 0;
   }
 
-  const teamConsistencyThreshold = 40;
-  for (const frame of unclustered) {
-    const teamConsistency = computeTeamConsistencyForFrame(frame, otherTeamFrames);
-
-    const usedNames = new Set(frame.componentNames);
-    const componentUsage = allLibraryComponents.filter((lc) => usedNames.has(lc.name));
-    const nameMatches: LibraryComponent[] = [];
-    for (const libComp of allLibraryComponents) {
-      const score = fuzzyMatch(frame.name, libComp.name);
-      if (score >= 0.5) nameMatches.push(libComp);
-    }
-    const libraryMatches = findLibraryMatches([frame], allLibraryFingerprints);
-
-    const hasLibraryMatch =
-      componentUsage.length > 0 || nameMatches.length > 0 || libraryMatches.length > 0;
-    if (teamConsistency >= teamConsistencyThreshold || hasLibraryMatch) {
-      results.push({
-        fingerprint: `${frame.width}x${frame.height}_single`,
-        frames: [frame],
-        consistency: teamConsistency,
-        componentUsage,
-        nameMatches,
-        libraryMatches,
-      });
-    }
-  }
-
-  // Sort by relevance
-  results.sort((a, b) => {
-    const topMatchA = a.libraryMatches.length > 0 ? a.libraryMatches[0].similarity : 0;
-    const topMatchB = b.libraryMatches.length > 0 ? b.libraryMatches[0].similarity : 0;
-    const scoreA = a.consistency + a.frames.length * 5 + a.componentUsage.length * 3 + topMatchA;
-    const scoreB = b.consistency + b.frames.length * 5 + b.componentUsage.length * 3 + topMatchB;
-    return scoreB - scoreA;
-  });
-
-  return results;
+  return {
+    selectedFrame: selectedFp,
+    teamFileResults,
+    libraryMatches,
+    overallConsistency: Math.round(overallConsistency),
+  };
 }
 
 async function performTeamScan(settings: PluginSettings): Promise<PatternGroup[]> {
@@ -1069,7 +1086,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       try {
         const settings = (msg.payload as PluginSettings) || { token: '', libraryUrls: [], teamId: '' };
         const results = await performScan(settings);
-        figma.ui.postMessage({ type: 'scan-results', payload: results });
+        figma.ui.postMessage({ type: 'scan-file-results', payload: results });
       } catch (err) {
         figma.ui.postMessage({ type: 'error', payload: `Scan failed: ${err}` });
       }

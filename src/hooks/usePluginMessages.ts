@@ -65,6 +65,28 @@ export interface ScanProgress {
   fileName: string;
 }
 
+export interface TeamFrameMatch {
+  teamFrameId: string;
+  teamFrameName: string;
+  localFrameId: string;
+  localFrameName: string;
+  similarity: number; // 0-100, rounded
+}
+
+export interface TeamFileResult {
+  fileKey: string;
+  fileName: string;
+  consistency: number;
+  matches: TeamFrameMatch[];
+}
+
+export interface SelectedFrameScanResult {
+  selectedFrame: FrameFingerprint;
+  teamFileResults: TeamFileResult[];
+  libraryMatches: LibraryMatch[];
+  overallConsistency: number;
+}
+
 export interface PluginSettings {
   token: string;
   libraryUrls: string[];
@@ -73,6 +95,8 @@ export interface PluginSettings {
 
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
+  const [selectedFrameScanResult, setSelectedFrameScanResult] =
+    useState<SelectedFrameScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
@@ -92,6 +116,11 @@ export function usePluginMessages() {
       switch (msg.type) {
         case 'scan-results':
           setResults(msg.payload);
+          setIsScanning(false);
+          setScanProgress(null);
+          break;
+        case 'scan-file-results':
+          setSelectedFrameScanResult(msg.payload);
           setIsScanning(false);
           setScanProgress(null);
           break;
@@ -171,6 +200,7 @@ export function usePluginMessages() {
 
   return {
     results,
+    selectedFrameScanResult,
     isScanning,
     scanProgress,
     selectedFrame,

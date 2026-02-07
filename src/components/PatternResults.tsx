@@ -20,11 +20,29 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
     <div className="flex flex-col gap-4 p-4">
       {groups.map((group) => (
         <div key={group.fingerprint} className="border border-gray-200 rounded-lg p-3">
-          <div className="text-sm font-medium text-gray-700 mb-2">
-            {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
-            <span className="text-gray-400 ml-2 font-normal">
-              {group.frames[0].width}×{group.frames[0].height}px
-            </span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700">
+              {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
+              <span className="text-gray-400 ml-2 font-normal">
+                {group.frames[0].width}×{group.frames[0].height}px
+              </span>
+            </div>
+            {group.frames.length >= 2 && (
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  group.consistency >= 90
+                    ? 'bg-green-100 text-green-700'
+                    : group.consistency >= 75
+                      ? 'bg-blue-100 text-blue-700'
+                      : group.consistency >= 60
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                }`}
+                title="Structural consistency between frames in this group"
+              >
+                {group.consistency}% consistent
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1 mb-2">
@@ -47,6 +65,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
           <MatchDetails
             componentUsage={group.componentUsage || []}
             nameMatches={group.nameMatches || []}
+            libraryMatches={group.libraryMatches || []}
             onOpenInFigma={onOpenInFigma}
           />
         </div>

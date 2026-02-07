@@ -10,6 +10,11 @@ export interface FrameFingerprint {
   componentIds: string[];
   componentNames: string[];
   aspectRatio: number;
+  layoutMode: string;
+  cornerRadius: number;
+  hasAutoLayout: boolean;
+  fillCount: number;
+  childTypeDistribution: Record<string, number>;
 }
 
 export interface LibraryComponent {
@@ -21,11 +26,21 @@ export interface LibraryComponent {
   fileUrl: string;
 }
 
+export interface LibraryMatch {
+  componentId: string;
+  componentName: string;
+  similarity: number;
+  fileKey: string;
+  fileUrl: string;
+}
+
 export interface PatternGroup {
   fingerprint: string;
   frames: FrameFingerprint[];
+  consistency: number;
   componentUsage: LibraryComponent[];
   nameMatches: LibraryComponent[];
+  libraryMatches: LibraryMatch[];
 }
 
 export interface FrameDetail {

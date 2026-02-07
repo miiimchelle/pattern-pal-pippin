@@ -71,6 +71,7 @@ function App() {
               onClick={scan}
               disabled={isScanning}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors"
+              title="Scan current page and compare structure to other team files"
             >
               {isScanning && !scanProgress ? 'Scanning...' : 'Scan Current Page'}
             </button>
@@ -98,9 +99,9 @@ function App() {
               </div>
             )}
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-            {!settings.token && (
+            {(!settings.token || !settings.teamId) && (
               <p className="text-xs text-amber-600 mt-1">
-                Add your Figma token in settings to enable library matching
+                Add your Figma token and Team ID in settings to scan and compare against other team files
               </p>
             )}
           </div>

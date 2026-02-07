@@ -7,5 +7,6 @@
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": ["https://api.figma.com"]
-  }
+  },
+  "enablePrivatePluginApi": true
 }

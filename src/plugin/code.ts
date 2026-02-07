@@ -12,6 +12,11 @@ interface FrameFingerprint {
   componentIds: string[];
   componentNames: string[];
   aspectRatio: number;
+  layoutMode: string;
+  cornerRadius: number;
+  hasAutoLayout: boolean;
+  fillCount: number;
+  childTypeDistribution: Record<string, number>;
 }
 
 interface LibraryComponent {
@@ -23,11 +28,41 @@ interface LibraryComponent {
   fileUrl: string;
 }
 
+// Structural fingerprint for a library component (from REST API)
+interface LibraryComponentFingerprint {
+  id: string;
+  name: string;
+  description: string;
+  fileKey: string;
+  fileName: string;
+  fileUrl: string;
+  width: number;
+  height: number;
+  childCount: number;
+  maxDepth: number;
+  aspectRatio: number;
+  layoutMode: string;
+  cornerRadius: number;
+  fillCount: number;
+  childTypeDistribution: Record<string, number>;
+}
+
+// A structural match between a local frame and a library component
+interface LibraryMatch {
+  componentId: string;
+  componentName: string;
+  similarity: number; // 0-100
+  fileKey: string;
+  fileUrl: string;
+}
+
 interface PatternGroup {
   fingerprint: string;
   frames: FrameFingerprint[];
+  consistency: number; // 0-100 percentage
   componentUsage: LibraryComponent[];
   nameMatches: LibraryComponent[];
+  libraryMatches: LibraryMatch[]; // structural matches against library
 }
 
 interface FrameDetail {
@@ -52,6 +87,7 @@ interface PluginSettings {
 interface FigmaFileData {
   name: string;
   components: LibraryComponent[];
+  fingerprints: LibraryComponentFingerprint[];
 }
 
 // ==================== STORAGE ====================
@@ -138,8 +174,28 @@ function getComponentInfo(node: SceneNode): { ids: string[]; names: string[] } {
   return { ids: [...new Set(ids)], names };
 }
 
+function getChildTypeDistribution(frame: FrameNode): Record<string, number> {
+  const dist: Record<string, number> = {};
+  for (const child of frame.children) {
+    dist[child.type] = (dist[child.type] || 0) + 1;
+  }
+  return dist;
+}
+
 function fingerprint(frame: FrameNode): FrameFingerprint {
   const componentInfo = getComponentInfo(frame);
+  const layoutMode = frame.layoutMode || 'NONE';
+  let cr = 0;
+  if (typeof frame.cornerRadius === 'number') {
+    cr = frame.cornerRadius;
+  } else {
+    cr = Math.max(
+      frame.topLeftRadius,
+      frame.topRightRadius,
+      frame.bottomRightRadius,
+      frame.bottomLeftRadius,
+    );
+  }
 
   return {
     id: frame.id,
@@ -151,13 +207,193 @@ function fingerprint(frame: FrameNode): FrameFingerprint {
     componentIds: componentInfo.ids,
     componentNames: componentInfo.names,
     aspectRatio: Math.round((frame.width / frame.height) * 100) / 100,
+    layoutMode,
+    cornerRadius: cr,
+    hasAutoLayout: layoutMode !== 'NONE',
+    fillCount: Array.isArray(frame.fills) ? frame.fills.filter((f) => f.visible !== false).length : 0,
+    childTypeDistribution: getChildTypeDistribution(frame),
   };
 }
 
-function getSimilarityKey(fp: FrameFingerprint): string {
-  const widthBucket = Math.round(fp.width / 50) * 50;
-  const heightBucket = Math.round(fp.height / 50) * 50;
-  return `${widthBucket}x${heightBucket}_c${fp.childCount}_d${fp.maxDepth}`;
+// ==================== SIMILARITY SCORING ====================
+
+// Common structural shape shared by both FrameFingerprint and LibraryComponentFingerprint
+interface StructuralShape {
+  width: number;
+  height: number;
+  childCount: number;
+  maxDepth: number;
+  aspectRatio: number;
+  layoutMode: string;
+  cornerRadius: number;
+  fillCount: number;
+  childTypeDistribution: Record<string, number>;
+  componentIds?: string[];
+}
+
+function computeStructuralSimilarity(a: StructuralShape, b: StructuralShape): number {
+  let score = 0;
+  let totalWeight = 0;
+
+  // Dimension similarity (weight 2)
+  const dimW = 1 - Math.abs(a.width - b.width) / Math.max(a.width, b.width, 1);
+  const dimH = 1 - Math.abs(a.height - b.height) / Math.max(a.height, b.height, 1);
+  score += ((dimW + dimH) / 2) * 2;
+  totalWeight += 2;
+
+  // Aspect ratio similarity (weight 1)
+  const arSim =
+    1 - Math.abs(a.aspectRatio - b.aspectRatio) / Math.max(a.aspectRatio, b.aspectRatio, 0.01);
+  score += arSim * 1;
+  totalWeight += 1;
+
+  // Child count similarity (weight 2)
+  const ccSim =
+    1 - Math.abs(a.childCount - b.childCount) / Math.max(a.childCount, b.childCount, 1);
+  score += ccSim * 2;
+  totalWeight += 2;
+
+  // Tree depth similarity (weight 2)
+  const depthSim =
+    1 - Math.abs(a.maxDepth - b.maxDepth) / Math.max(a.maxDepth, b.maxDepth, 1);
+  score += depthSim * 2;
+  totalWeight += 2;
+
+  // Layout mode match (weight 1.5)
+  score += (a.layoutMode === b.layoutMode ? 1 : 0) * 1.5;
+  totalWeight += 1.5;
+
+  // Corner radius similarity (weight 1)
+  const maxCr = Math.max(a.cornerRadius, b.cornerRadius, 1);
+  score += (1 - Math.abs(a.cornerRadius - b.cornerRadius) / maxCr) * 1;
+  totalWeight += 1;
+
+  // Component ID overlap — Jaccard similarity (weight 3, only if both have componentIds)
+  const idsA = a.componentIds || [];
+  const idsB = b.componentIds || [];
+  if (idsA.length > 0 || idsB.length > 0) {
+    const setA = new Set(idsA);
+    const setB = new Set(idsB);
+    const union = new Set([...setA, ...setB]);
+    if (union.size > 0) {
+      const intersection = [...setA].filter((x) => setB.has(x)).length;
+      score += (intersection / union.size) * 3;
+    }
+  }
+  totalWeight += 3;
+
+  // Child type distribution similarity (weight 2)
+  const allTypes = new Set([
+    ...Object.keys(a.childTypeDistribution),
+    ...Object.keys(b.childTypeDistribution),
+  ]);
+  if (allTypes.size > 0) {
+    let typeSim = 0;
+    for (const t of allTypes) {
+      const countA = a.childTypeDistribution[t] || 0;
+      const countB = b.childTypeDistribution[t] || 0;
+      typeSim += 1 - Math.abs(countA - countB) / Math.max(countA, countB, 1);
+    }
+    score += (typeSim / allTypes.size) * 2;
+  }
+  totalWeight += 2;
+
+  // Fill count similarity (weight 0.5)
+  const maxFill = Math.max(a.fillCount, b.fillCount, 1);
+  score += (1 - Math.abs(a.fillCount - b.fillCount) / maxFill) * 0.5;
+  totalWeight += 0.5;
+
+  return Math.round((score / totalWeight) * 100);
+}
+
+// Compare two local frames
+function computeSimilarity(a: FrameFingerprint, b: FrameFingerprint): number {
+  return computeStructuralSimilarity(a, b);
+}
+
+// Compare a local frame against a library component fingerprint
+function compareFrameToLibrary(
+  frame: FrameFingerprint,
+  libFp: LibraryComponentFingerprint,
+): number {
+  return computeStructuralSimilarity(frame, libFp);
+}
+
+// Find the best library matches for a set of frames (top matches above threshold)
+function findLibraryMatches(
+  frames: FrameFingerprint[],
+  libraryFingerprints: LibraryComponentFingerprint[],
+  threshold = 40,
+  maxResults = 5,
+): LibraryMatch[] {
+  if (libraryFingerprints.length === 0) return [];
+
+  // For each library component, compute the average similarity across all frames in the group
+  const scored: { fp: LibraryComponentFingerprint; avgSim: number }[] = [];
+
+  for (const libFp of libraryFingerprints) {
+    const avgSim =
+      frames.reduce((sum, f) => sum + compareFrameToLibrary(f, libFp), 0) / frames.length;
+    if (avgSim >= threshold) {
+      scored.push({ fp: libFp, avgSim });
+    }
+  }
+
+  // Sort by similarity descending, take top N
+  scored.sort((a, b) => b.avgSim - a.avgSim);
+
+  return scored.slice(0, maxResults).map((s) => ({
+    componentId: s.fp.id,
+    componentName: s.fp.name,
+    similarity: s.avgSim,
+    fileKey: s.fp.fileKey,
+    fileUrl: s.fp.fileUrl,
+  }));
+}
+
+// Cluster frames by pairwise similarity, threshold = minimum % to belong to a cluster
+function clusterFrames(
+  frames: FrameFingerprint[],
+  threshold: number,
+): { frames: FrameFingerprint[]; consistency: number }[] {
+  const clusters: FrameFingerprint[][] = [];
+
+  for (const frame of frames) {
+    let bestCluster: FrameFingerprint[] | null = null;
+    let bestAvg = 0;
+
+    for (const cluster of clusters) {
+      const avgSim =
+        cluster.reduce((sum, f) => sum + computeSimilarity(frame, f), 0) / cluster.length;
+      if (avgSim >= threshold && avgSim > bestAvg) {
+        bestCluster = cluster;
+        bestAvg = avgSim;
+      }
+    }
+
+    if (bestCluster) {
+      bestCluster.push(frame);
+    } else {
+      clusters.push([frame]);
+    }
+  }
+
+  return clusters
+    .filter((c) => c.length >= 2)
+    .map((cluster) => {
+      let totalSim = 0;
+      let pairs = 0;
+      for (let i = 0; i < cluster.length; i++) {
+        for (let j = i + 1; j < cluster.length; j++) {
+          totalSim += computeSimilarity(cluster[i], cluster[j]);
+          pairs++;
+        }
+      }
+      return {
+        frames: cluster,
+        consistency: pairs > 0 ? Math.round(totalSim / pairs) : 100,
+      };
+    });
 }
 
 function scanCurrentPage(): FrameFingerprint[] {
@@ -223,46 +459,107 @@ function getFrameDetail(frame: FrameNode): FrameDetail {
 
 // ==================== FIGMA API ====================
 
-// Recursively walk the node tree to find COMPONENT and COMPONENT_SET nodes
-function extractComponentNodes(
-  node: { id?: string; name?: string; type?: string; description?: string; children?: unknown[] },
+// REST API node shape (partial)
+interface ApiNode {
+  id?: string;
+  name?: string;
+  type?: string;
+  description?: string;
+  children?: ApiNode[];
+  absoluteBoundingBox?: { x: number; y: number; width: number; height: number };
+  layoutMode?: string;
+  cornerRadius?: number;
+  rectangleCornerRadii?: number[];
+  fills?: { type: string; visible?: boolean }[];
+}
+
+// Get max depth from an API node tree
+function getApiNodeDepth(node: ApiNode, current = 0): number {
+  if (!node.children || node.children.length === 0) return current;
+  return Math.max(...node.children.map((c) => getApiNodeDepth(c, current + 1)));
+}
+
+// Build a structural fingerprint from a REST API node
+function buildApiFingerprint(
+  node: ApiNode,
   fileKey: string,
   fileName: string,
   fileUrl: string,
-  result: LibraryComponent[],
+): LibraryComponentFingerprint {
+  const bb = node.absoluteBoundingBox || { width: 0, height: 0 };
+  const w = Math.round(bb.width);
+  const h = Math.round(bb.height);
+  const children = node.children || [];
+
+  const childTypeDist: Record<string, number> = {};
+  for (const child of children) {
+    const t = child.type || 'UNKNOWN';
+    childTypeDist[t] = (childTypeDist[t] || 0) + 1;
+  }
+
+  let cr = 0;
+  if (typeof node.cornerRadius === 'number') {
+    cr = node.cornerRadius;
+  } else if (node.rectangleCornerRadii) {
+    cr = Math.max(...node.rectangleCornerRadii);
+  }
+
+  const visibleFills = (node.fills || []).filter((f) => f.visible !== false);
+
+  return {
+    id: node.id || '',
+    name: node.name || 'Unnamed',
+    description: node.description || '',
+    fileKey,
+    fileName,
+    fileUrl,
+    width: w,
+    height: h,
+    childCount: children.length,
+    maxDepth: getApiNodeDepth(node),
+    aspectRatio: h > 0 ? Math.round((w / h) * 100) / 100 : 1,
+    layoutMode: node.layoutMode || 'NONE',
+    cornerRadius: cr,
+    fillCount: visibleFills.length,
+    childTypeDistribution: childTypeDist,
+  };
+}
+
+// Recursively walk the node tree to find COMPONENT and COMPONENT_SET nodes
+function extractComponentNodes(
+  node: ApiNode,
+  fileKey: string,
+  fileName: string,
+  fileUrl: string,
+  components: LibraryComponent[],
+  fingerprints: LibraryComponentFingerprint[],
 ): void {
   if (node.type === 'COMPONENT_SET') {
-    // Use the component set name (e.g. "button") and skip its variant children
-    result.push({
+    components.push({
       id: node.id || '',
       name: node.name || 'Unnamed',
-      description: (node as { description?: string }).description || '',
+      description: node.description || '',
       fileKey,
       fileName,
       fileUrl,
     });
+    fingerprints.push(buildApiFingerprint(node, fileKey, fileName, fileUrl));
     return; // Don't recurse into variants
   }
   if (node.type === 'COMPONENT') {
-    // Only add standalone components (not variants inside a COMPONENT_SET)
-    result.push({
+    components.push({
       id: node.id || '',
       name: node.name || 'Unnamed',
-      description: (node as { description?: string }).description || '',
+      description: node.description || '',
       fileKey,
       fileName,
       fileUrl,
     });
+    fingerprints.push(buildApiFingerprint(node, fileKey, fileName, fileUrl));
   }
   if (Array.isArray(node.children)) {
     for (const child of node.children) {
-      extractComponentNodes(
-        child as { id?: string; name?: string; type?: string; children?: unknown[] },
-        fileKey,
-        fileName,
-        fileUrl,
-        result,
-      );
+      extractComponentNodes(child, fileKey, fileName, fileUrl, components, fingerprints);
     }
   }
 }
@@ -273,8 +570,8 @@ async function fetchFigmaFile(
   token: string,
 ): Promise<FigmaFileData | null> {
   try {
-    // Use depth=3 to reach COMPONENT/COMPONENT_SET nodes inside pages
-    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=3`, {
+    // Use depth=4 to get structural data inside COMPONENT/COMPONENT_SET nodes
+    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=4`, {
       headers: { 'X-Figma-Token': token },
     });
 
@@ -285,6 +582,7 @@ async function fetchFigmaFile(
 
     const data = await response.json();
     const components: LibraryComponent[] = [];
+    const fingerprints: LibraryComponentFingerprint[] = [];
 
     // First try the published components metadata
     if (data.components && Object.keys(data.components).length > 0) {
@@ -293,8 +591,8 @@ async function fetchFigmaFile(
       )) {
         components.push({
           id,
-          name: comp.name || 'Unnamed',
-          description: comp.description || '',
+          name: (comp as { name?: string }).name || 'Unnamed',
+          description: (comp as { description?: string }).description || '',
           fileKey,
           fileName: data.name,
           fileUrl,
@@ -302,12 +600,18 @@ async function fetchFigmaFile(
       }
     }
 
-    // If no published components, walk the tree to find COMPONENT/COMPONENT_SET nodes
-    if (components.length === 0 && data.document) {
-      extractComponentNodes(data.document, fileKey, data.name, fileUrl, components);
+    // Walk tree to extract fingerprints (and components if none published)
+    if (data.document) {
+      const treeComponents: LibraryComponent[] = [];
+      extractComponentNodes(data.document, fileKey, data.name, fileUrl, treeComponents, fingerprints);
+
+      // Use tree components if no published ones
+      if (components.length === 0) {
+        components.push(...treeComponents);
+      }
     }
 
-    return { name: data.name, components };
+    return { name: data.name, components, fingerprints };
   } catch (err) {
     console.error(`Error fetching file ${fileKey}:`, err);
     return null;
@@ -319,8 +623,9 @@ async function fetchFigmaFile(
 async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
   const localFrames = scanCurrentPage();
 
-  // Fetch library components if token provided
+  // Fetch library components and fingerprints if token provided
   const allLibraryComponents: LibraryComponent[] = [];
+  const allLibraryFingerprints: LibraryComponentFingerprint[] = [];
 
   if (settings.token && settings.libraryUrls.length > 0) {
     for (const url of settings.libraryUrls) {
@@ -330,29 +635,27 @@ async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
       const fileData = await fetchFigmaFile(fileKey, url, settings.token);
       if (fileData) {
         allLibraryComponents.push(...fileData.components);
+        allLibraryFingerprints.push(...fileData.fingerprints);
       }
     }
   }
 
-  // Group local frames by similarity
-  const groups = new Map<string, FrameFingerprint[]>();
+  // Cluster frames by structural similarity (60% threshold)
+  const clusters = clusterFrames(localFrames, 60);
 
-  for (const fp of localFrames) {
-    const key = getSimilarityKey(fp);
-    if (!groups.has(key)) {
-      groups.set(key, []);
-    }
-    groups.get(key)!.push(fp);
-  }
+  // Also find single frames that match library components
+  const clusteredIds = new Set(clusters.flatMap((c) => c.frames.map((f) => f.id)));
+  const unclustered = localFrames.filter((f) => !clusteredIds.has(f.id));
 
-  // Build results with enhanced matching
+  // Build results with library matching
   const results: PatternGroup[] = [];
 
-  for (const [key, frames] of groups) {
-    // Find which library components are used in these frames
+  for (const cluster of clusters) {
+    const { frames, consistency } = cluster;
+
+    // Find which library components are used in these frames (by name)
     const usedComponentNames = new Set<string>();
     frames.forEach((f) => f.componentNames.forEach((n) => usedComponentNames.add(n)));
-
     const componentUsage = allLibraryComponents.filter((lc) => usedComponentNames.has(lc.name));
 
     // Find name matches (fuzzy)
@@ -366,21 +669,51 @@ async function performScan(settings: PluginSettings): Promise<PatternGroup[]> {
       }
     }
 
-    // Include groups with 2+ frames OR any library match
-    if (frames.length >= 2 || componentUsage.length > 0 || nameMatches.length > 0) {
+    // Structural comparison against library components
+    const libraryMatches = findLibraryMatches(frames, allLibraryFingerprints);
+
+    const label = `${frames[0].width}x${frames[0].height}_${consistency}%`;
+    results.push({
+      fingerprint: label,
+      frames,
+      consistency,
+      componentUsage,
+      nameMatches,
+      libraryMatches,
+    });
+  }
+
+  // Add unclustered frames that still have library matches
+  for (const frame of unclustered) {
+    const usedNames = new Set(frame.componentNames);
+    const componentUsage = allLibraryComponents.filter((lc) => usedNames.has(lc.name));
+
+    const nameMatches: LibraryComponent[] = [];
+    for (const libComp of allLibraryComponents) {
+      const score = fuzzyMatch(frame.name, libComp.name);
+      if (score >= 0.5) nameMatches.push(libComp);
+    }
+
+    const libraryMatches = findLibraryMatches([frame], allLibraryFingerprints);
+
+    if (componentUsage.length > 0 || nameMatches.length > 0 || libraryMatches.length > 0) {
       results.push({
-        fingerprint: key,
-        frames,
+        fingerprint: `${frame.width}x${frame.height}_single`,
+        frames: [frame],
+        consistency: 100,
         componentUsage,
         nameMatches,
+        libraryMatches,
       });
     }
   }
 
   // Sort by relevance
   results.sort((a, b) => {
-    const scoreA = a.frames.length + a.componentUsage.length * 3 + a.nameMatches.length * 2;
-    const scoreB = b.frames.length + b.componentUsage.length * 3 + b.nameMatches.length * 2;
+    const topMatchA = a.libraryMatches.length > 0 ? a.libraryMatches[0].similarity : 0;
+    const topMatchB = b.libraryMatches.length > 0 ? b.libraryMatches[0].similarity : 0;
+    const scoreA = a.consistency + a.frames.length * 5 + a.componentUsage.length * 3 + topMatchA;
+    const scoreB = b.consistency + b.frames.length * 5 + b.componentUsage.length * 3 + topMatchB;
     return scoreB - scoreA;
   });
 

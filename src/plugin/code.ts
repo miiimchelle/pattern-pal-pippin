@@ -218,13 +218,45 @@ function getFrameDetail(frame: FrameNode): FrameDetail {
 
 // ==================== FIGMA API ====================
 
+// Recursively walk the node tree to find COMPONENT and COMPONENT_SET nodes
+function extractComponentNodes(
+  node: { id?: string; name?: string; type?: string; description?: string; children?: unknown[] },
+  fileKey: string,
+  fileName: string,
+  fileUrl: string,
+  result: LibraryComponent[],
+): void {
+  if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+    result.push({
+      id: node.id || '',
+      name: node.name || 'Unnamed',
+      description: (node as { description?: string }).description || '',
+      fileKey,
+      fileName,
+      fileUrl,
+    });
+  }
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      extractComponentNodes(
+        child as { id?: string; name?: string; type?: string; children?: unknown[] },
+        fileKey,
+        fileName,
+        fileUrl,
+        result,
+      );
+    }
+  }
+}
+
 async function fetchFigmaFile(
   fileKey: string,
   fileUrl: string,
   token: string,
 ): Promise<FigmaFileData | null> {
   try {
-    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=1`, {
+    // Use depth=3 to reach COMPONENT/COMPONENT_SET nodes inside pages
+    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=3`, {
       headers: { 'X-Figma-Token': token },
     });
 
@@ -236,8 +268,8 @@ async function fetchFigmaFile(
     const data = await response.json();
     const components: LibraryComponent[] = [];
 
-    // Extract components from the file
-    if (data.components) {
+    // First try the published components metadata
+    if (data.components && Object.keys(data.components).length > 0) {
       for (const [id, comp] of Object.entries(
         data.components as Record<string, { name?: string; description?: string }>,
       )) {
@@ -250,6 +282,11 @@ async function fetchFigmaFile(
           fileUrl,
         });
       }
+    }
+
+    // If no published components, walk the tree to find COMPONENT/COMPONENT_SET nodes
+    if (components.length === 0 && data.document) {
+      extractComponentNodes(data.document, fileKey, data.name, fileUrl, components);
     }
 
     return { name: data.name, components };

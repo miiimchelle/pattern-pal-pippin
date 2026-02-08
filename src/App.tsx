@@ -175,19 +175,29 @@ function App() {
               </p>
             )}
             {results.length > 0 && (
-              <button
-                onClick={pushToDashboard}
-                disabled={pushStatus === 'pushing'}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium py-2 px-4 rounded transition-colors"
-              >
-                {pushStatus === 'pushing'
-                  ? 'Pushing...'
-                  : pushStatus === 'success'
-                    ? 'Pushed!'
-                    : pushStatus === 'error'
-                      ? 'Push Failed — Retry?'
-                      : 'Push to Dashboard'}
-              </button>
+              <>
+                <button
+                  onClick={pushToDashboard}
+                  disabled={pushStatus === 'pushing'}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium py-2 px-4 rounded transition-colors"
+                >
+                  {pushStatus === 'pushing'
+                    ? 'Pushing...'
+                    : pushStatus === 'success'
+                      ? 'Pushed!'
+                      : pushStatus === 'error'
+                        ? 'Push Failed — Retry?'
+                        : 'Push to Dashboard'}
+                </button>
+                {pushStatus === 'success' && settings.dashboardUrl && (
+                  <button
+                    onClick={() => openInFigma(settings.dashboardUrl)}
+                    className="w-full text-emerald-600 hover:text-emerald-700 text-sm font-medium py-1 underline underline-offset-2 transition-colors"
+                  >
+                    View Dashboard
+                  </button>
+                )}
+              </>
             )}
           </div>
           <div className="flex-1 overflow-auto">

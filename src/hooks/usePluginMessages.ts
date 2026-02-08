@@ -245,7 +245,10 @@ export function usePluginMessages() {
 
   const pushToDashboard = useCallback(() => {
     setPushStatus('pushing');
-    setTimeout(() => setPushStatus('success'), 2000);
+    setTimeout(() => {
+      setPushStatus('success');
+      setTimeout(() => setPushStatus('idle'), 3000);
+    }, 2000);
   }, []);
 
   const close = useCallback(() => {

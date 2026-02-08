@@ -61,7 +61,8 @@ function PippinWidget({
     consistency = selectedFrameScanResult.overallConsistency;
   } else if (results.length > 0) {
     status = 'success';
-    consistency = null;
+    const avg = results.reduce((sum, g) => sum + g.consistency, 0) / results.length;
+    consistency = Math.round(avg);
   }
 
   return <Pippin status={status} overallConsistency={consistency} />;

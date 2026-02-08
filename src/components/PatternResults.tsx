@@ -10,19 +10,21 @@ interface Props {
 export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
   if (groups.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500">
-        No patterns found. Try a page with more frames.
+      <div className="empty-state p-4">
+        <div className="empty-state-icon">📭</div>
+        <div className="empty-state-title">No patterns found</div>
+        <div className="empty-state-description">Try a page with more frames.</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="violations-container flex flex-col gap-4 p-4">
       {groups.map((group) => {
         const fileCount = new Set(group.frames.map((f) => f.fileKey || '__local__')).size;
         return (
-          <div key={group.fingerprint} className="border border-gray-200 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
+          <div key={group.fingerprint} className="violation border border-gray-200 rounded-lg p-3">
+            <div className="violations-header flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-gray-700">
                 {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
                 <span className="text-gray-400 ml-2 font-normal">
@@ -36,7 +38,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
               </div>
               {group.frames.length >= 2 && (
                 <span
-                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  className={`status-count text-xs font-semibold px-2 py-0.5 rounded-full ${
                     group.consistency >= 90
                       ? 'bg-green-100 text-green-700'
                       : group.consistency >= 75
@@ -57,9 +59,9 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
                 <button
                   key={`${frame.fileKey || 'local'}-${frame.id}`}
                   onClick={() => onFrameClick(frame.id, frame.fileKey, group)}
-                  className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
+                  className="violation text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
                 >
-                  <span className="truncate flex items-center gap-1.5">
+                  <span className="frame-name truncate flex items-center gap-1.5">
                     {frame.name}
                     {frame.fileName && (
                       <span className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded shrink-0">

@@ -90,8 +90,8 @@ function App() {
     <div className="h-screen bg-white flex flex-col">
       <header className="p-4 border-b border-gray-200 flex items-start justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Pattern Pal</h1>
-          <p className="text-sm text-gray-500">Find similar patterns in your designs</p>
+          <h1 className="pattern-pal-h1 text-lg font-semibold">Pattern Pal</h1>
+          <p className="text-sm text-gray-500 pattern-pal-message">Find similar patterns in your designs</p>
         </div>
         <button
           onClick={() => setShowSettings(!showSettings)}
@@ -137,7 +137,7 @@ function App() {
             <button
               onClick={scan}
               disabled={isScanning || !selectedFrame}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors"
+              className="pattern-pal-btn w-full bg-[#09090b] hover:bg-[#18181b] disabled:bg-[#e4e4e7] disabled:text-[#a1a1aa] text-white font-medium"
               title="Scan selected frame and compare to team files and design library"
             >
               {isScanning && !scanProgress ? 'Scanning...' : 'Scan Selected Frame'}
@@ -149,7 +149,7 @@ function App() {
               <button
                 onClick={scanTeam}
                 disabled={isScanning}
-                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-medium py-2 px-4 rounded transition-colors"
+                className="pattern-pal-btn w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-medium"
               >
                 {isScanning && scanProgress ? 'Scanning Team...' : 'Scan Team Files'}
               </button>
@@ -170,16 +170,18 @@ function App() {
             )}
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
             {(!settings.token || !settings.teamId) && (
-              <p className="text-xs text-amber-600 mt-1">
-                Add your Figma token and Team ID in settings to scan and compare against other team files
-              </p>
+              <div className="alert mt-1">
+                <div className="alert-body">
+                  Add your Figma token and Team ID in settings to scan and compare against other team files
+                </div>
+              </div>
             )}
             {results.length > 0 && (
               <>
                 <button
                   onClick={pushToDashboard}
                   disabled={pushStatus === 'pushing'}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium py-2 px-4 rounded transition-colors"
+                  className="pattern-pal-btn w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium"
                 >
                   {pushStatus === 'pushing'
                     ? 'Pushing...'

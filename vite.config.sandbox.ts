@@ -3,6 +3,7 @@ import path from 'path';
 
 export default defineConfig({
   build: {
+    target: 'es2019',
     outDir: 'dist',
     emptyOutDir: false,
     lib: {

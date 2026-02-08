@@ -137,8 +137,8 @@ export function Pippin({ status, overallConsistency }: Props) {
 
   return (
     <div className="flex flex-row items-center justify-center gap-2">
-      {/* Sprite */}
-      <div className="animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
+      {/* Sprite — Pippin (tamagotchi class from global.css) */}
+      <div className="tamagotchi pattern-pal-sprite animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
 
       {/* Speech bubble — to the right of the sprite */}
       <div

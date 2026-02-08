@@ -31,11 +31,11 @@ export function SelectedFrameScanResults({ result, onOpenInFigma }: Props) {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="border-b border-gray-200 pb-3">
-        <h2 className="text-sm font-semibold text-gray-800 truncate" title={selectedFrame.name}>
+        <h2 className="frame-name text-sm font-semibold text-gray-800 truncate" title={selectedFrame.name}>
           {selectedFrame.name}
         </h2>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-xs text-gray-500">Overall consistency</span>
+          <span className="overall-health-label">Overall consistency</span>
           <span
             className={`text-sm font-semibold px-2 py-0.5 rounded-full ${consistencyColor(overallConsistency)}`}
           >
@@ -63,9 +63,9 @@ export function SelectedFrameScanResults({ result, onOpenInFigma }: Props) {
               <button
                 key={match.componentId}
                 onClick={() => onOpenInFigma(buildLibraryUrl(match.fileKey, match.componentId))}
-                className="text-left px-2 py-1.5 text-sm hover:bg-blue-50 rounded transition-colors flex items-center justify-between gap-2"
+                className="violation text-left px-2 py-1.5 text-sm hover:bg-blue-50 rounded transition-colors flex items-center justify-between gap-2"
               >
-                <span className="truncate text-gray-700">{match.componentName}</span>
+                <span className="truncate text-gray-700 pattern-pal-message">{match.componentName}</span>
                 <span
                   className={`text-xs font-semibold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${similarityColor(Math.round(match.similarity))}`}
                 >

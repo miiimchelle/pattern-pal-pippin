@@ -42,6 +42,7 @@ function countFindings(result: SelectedFrameScanResult | null): number {
       if (m.similarity < 70) count++;
     }
   }
+  count += (result.buttonIssues ?? []).length;
   return count;
 }
 
@@ -341,6 +342,7 @@ function App() {
               <SelectedFrameScanResults
                 result={selectedFrameScanResult}
                 onOpenInFigma={openInFigma}
+                onZoomToFrame={zoomToFrame}
               />
             ) : !isScanning ? (
               <PatternResults

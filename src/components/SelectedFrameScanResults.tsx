@@ -16,10 +16,12 @@ function buildLibraryUrl(fileKey: string, nodeId: string): string {
 interface Props {
   result: SelectedFrameScanResult;
   onOpenInFigma: (url: string) => void;
+  onZoomToFrame?: (frameId: string) => void;
 }
 
-export function SelectedFrameScanResults({ result, onOpenInFigma }: Props) {
+export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame }: Props) {
   const { selectedFrame, teamFileResults, libraryMatches } = result;
+  const buttonIssues = result.buttonIssues ?? [];
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -75,8 +77,42 @@ export function SelectedFrameScanResults({ result, onOpenInFigma }: Props) {
         </section>
       )}
 
+      {/* Button rule violations */}
+      {buttonIssues.length > 0 && (
+        <section>
+          <div className="violations-header">
+            <span>Button rules</span>
+            <span className="status-count">{buttonIssues.length}</span>
+          </div>
+          <div className="violations-container">
+            {buttonIssues.map((issue) => (
+              <div
+                key={issue.frameId}
+                onClick={() => onZoomToFrame?.(issue.frameId)}
+                className="violation"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') onZoomToFrame?.(issue.frameId);
+                }}
+              >
+                <div className="frame-name">
+                  <span>{issue.frameName}</span>
+                  <span className="badge bg-red-50 text-red-700!">
+                    {issue.primaryButtonIds.length} primary
+                  </span>
+                </div>
+                <div className="pattern-pal-message">
+                  {issue.message}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Empty state */}
-      {teamFileResults.length === 0 && libraryMatches.length === 0 && (
+      {teamFileResults.length === 0 && libraryMatches.length === 0 && buttonIssues.length === 0 && (
         <div className="empty-state">
           <div className="empty-state-icon">&check;</div>
           <div className="empty-state-title">No violations found</div>

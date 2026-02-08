@@ -80,11 +80,19 @@ export interface TeamFileResult {
   matches: TeamFrameMatch[];
 }
 
+export interface RuleIssue {
+  frameId: string;
+  frameName: string;
+  primaryButtonIds: string[];
+  message: string;
+}
+
 export interface SelectedFrameScanResult {
   selectedFrame: FrameFingerprint;
   teamFileResults: TeamFileResult[];
   libraryMatches: LibraryMatch[];
   overallConsistency: number;
+  buttonIssues: RuleIssue[];
 }
 
 export interface PluginSettings {

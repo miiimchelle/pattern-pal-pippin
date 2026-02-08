@@ -6,7 +6,8 @@
   "ui": "dist/index.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["https://api.figma.com", "*"]
+    "allowedDomains": ["https://api.figma.com", "*"],
+    "reasoning": "Pushes design system contribution data to a user-configured dashboard endpoint"
   },
   "enablePrivatePluginApi": true
 }

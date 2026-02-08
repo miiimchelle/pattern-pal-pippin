@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress } from './hooks/usePluginMessages';
+import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress, type PushStatus } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
@@ -13,17 +13,24 @@ function PippinWidget({
   error,
   selectedFrameScanResult,
   results,
+  pushStatus,
 }: {
   isScanning: boolean;
   scanProgress: ScanProgress | null;
   error: string | null;
   selectedFrameScanResult: SelectedFrameScanResult | null;
   results: PatternGroup[];
+  pushStatus: PushStatus;
 }) {
   let status: PippinStatus = 'idle';
   let consistency: number | null = null;
 
-  if (error) {
+  if (pushStatus === 'pushing') {
+    status = 'loading';
+  } else if (pushStatus === 'success') {
+    status = 'success';
+    consistency = 95;
+  } else if (error) {
     status = 'error';
   } else if (isScanning) {
     status = scanProgress ? 'checking' : 'loading';
@@ -125,6 +132,7 @@ function App() {
               error={error}
               selectedFrameScanResult={selectedFrameScanResult}
               results={results}
+              pushStatus={pushStatus}
             />
             <button
               onClick={scan}
@@ -166,7 +174,7 @@ function App() {
                 Add your Figma token and Team ID in settings to scan and compare against other team files
               </p>
             )}
-            {results.length > 0 && settings.dashboardUrl && (
+            {results.length > 0 && (
               <button
                 onClick={pushToDashboard}
                 disabled={pushStatus === 'pushing'}

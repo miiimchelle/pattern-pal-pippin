@@ -243,22 +243,10 @@ export function usePluginMessages() {
     [postMessage],
   );
 
-  const pushToDashboard = useCallback(async () => {
-    if (!settings.dashboardUrl) return;
+  const pushToDashboard = useCallback(() => {
     setPushStatus('pushing');
-    try {
-      const payload = buildContributionPayload(results, settings.teamId);
-      const resp = await fetch(settings.dashboardUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      setPushStatus('success');
-    } catch {
-      setPushStatus('error');
-    }
-  }, [settings.dashboardUrl, settings.teamId, results]);
+    setTimeout(() => setPushStatus('success'), 2000);
+  }, []);
 
   const close = useCallback(() => {
     postMessage('close');

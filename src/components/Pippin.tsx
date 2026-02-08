@@ -21,12 +21,13 @@ import {
 // Row 1 (3 items): sad, thinking, heart
 // Row 2 (3 items): party-hat, excited, candle
 //
-// We scale the full image so each cell = 64×56 display px.
-// background-size: 256px 168px  (1490*(168/874)≈256, 874*(168/874)=168)
-const IMG_W = 256;
-const IMG_H = 168;
-const CELL_W = IMG_W / 4; // 64
-const CELL_H = IMG_H / 3; // 56
+// We scale the full image so each cell height = 120px (fills the box).
+// Native cell height = 874/3 ≈ 291.  Scale = 120/291 ≈ 0.412
+// background-size: 1490*0.412 ≈ 614px,  874*0.412 = 360px
+const IMG_W = 614;
+const IMG_H = 360;
+const CELL_W = IMG_W / 4; // ~153.5
+const CELL_H = IMG_H / 3; // 120
 
 type SpritePos = [row: number, col: number];
 
@@ -43,15 +44,22 @@ const SPRITE: Record<string, SpritePos> = {
   atNight: [2, 2],    // candle
 };
 
+// Display size for the visible container (square, centred on sprite)
+const DISPLAY_SIZE = 120;
+
 function spriteStyle(key: string): React.CSSProperties {
   const [row, col] = SPRITE[key] ?? SPRITE.idle;
+  // Centre the cell within the square display box
+  const offsetX = -col * CELL_W + (DISPLAY_SIZE - CELL_W) / 2;
+  const offsetY = -row * CELL_H + (DISPLAY_SIZE - CELL_H) / 2;
   return {
-    width: CELL_W,
-    height: CELL_H,
+    width: DISPLAY_SIZE,
+    height: DISPLAY_SIZE,
     backgroundImage: `url(${pippinSprite})`,
     backgroundSize: `${IMG_W}px ${IMG_H}px`,
-    backgroundPosition: `-${col * CELL_W}px -${row * CELL_H}px`,
+    backgroundPosition: `${offsetX}px ${offsetY}px`,
     backgroundRepeat: 'no-repeat',
+    overflow: 'hidden',
     flexShrink: 0,
   };
 }
@@ -127,16 +135,16 @@ export function Pippin({ status, overallConsistency }: Props) {
   );
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Sprite */}
-      <div style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
-
-      {/* Speech bubble */}
-      <div className="relative bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-700 leading-snug max-w-[260px]">
-        {/* Tail pointing left */}
-        <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-gray-100" />
+    <div className="flex flex-col items-center -gap-1" style={{ gap: 0 }}>
+      {/* Speech bubble — above the sprite */}
+      <div className="relative bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-700 leading-snug text-center max-w-[260px]">
         {mood.line}
+        {/* Tail pointing down */}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-0 h-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-gray-100" />
       </div>
+
+      {/* Sprite — centred */}
+      <div style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
     </div>
   );
 }

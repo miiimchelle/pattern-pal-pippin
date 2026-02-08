@@ -9,19 +9,6 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 // ---- Helpers ----
 
-function healthStatusLabel(c: number): string {
-  if (c >= 85) return 'Excellent';
-  if (c >= 70) return 'Good';
-  if (c >= 55) return 'Fair';
-  return 'Needs improvement';
-}
-
-function healthColorClass(c: number): string {
-  if (c >= 70) return 'health-good';
-  if (c >= 55) return 'health-fair';
-  return 'health-poor';
-}
-
 // Derive a team-comparison percentage from team file results
 function deriveTeamPercentage(result: SelectedFrameScanResult | null): number | null {
   if (!result) return null;
@@ -78,24 +65,6 @@ function PippinWidget({
   }
 
   return <Pippin status={status} overallConsistency={consistency} />;
-}
-
-// ---- Overall Health block ----
-
-function OverallHealth({ result }: { result: SelectedFrameScanResult | null }) {
-  const hasResult = result != null;
-  const c = result?.overallConsistency ?? 0;
-  const colorCls = hasResult ? healthColorClass(c) : 'health-neutral';
-  const valueText = hasResult ? `${c}%` : '\u2014';
-  const statusText = hasResult ? healthStatusLabel(c) : '';
-
-  return (
-    <div className="text-center">
-      <div className="overall-health-label">Overall Health</div>
-      <div className={`overall-health-value ${colorCls}`}>{valueText}</div>
-      {statusText && <div className={`overall-health-status ${colorCls}`}>{statusText}</div>}
-    </div>
-  );
 }
 
 // ---- Alert ----
@@ -218,9 +187,6 @@ function App() {
               selectedFrameScanResult={selectedFrameScanResult}
               results={results}
             />
-
-            {/* Overall Health */}
-            <OverallHealth result={selectedFrameScanResult} />
 
             {/* Alert — team comparison */}
             <TeamAlert result={selectedFrameScanResult} />

@@ -34,59 +34,6 @@
   margin: 0 auto 8px auto;
 }
 
-/* ---- Overall health ---- */
-.overall-health-label {
-  font-size: 12px;
-  color: #717182;
-  margin-bottom: 2px;
-}
-
-.overall-health-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #00a63e;
-  margin-bottom: 2px;
-}
-
-.overall-health-value.health-good {
-  color: #00a63e;
-}
-
-.overall-health-value.health-fair {
-  color: #d97706;
-}
-
-.overall-health-value.health-poor {
-  color: #dc2626;
-}
-
-.overall-health-value.health-neutral {
-  color: #71717a;
-}
-
-.overall-health-status {
-  font-size: 13px;
-  font-weight: 700;
-  color: #00a63e;
-  margin-bottom: 4px;
-}
-
-.overall-health-status.health-good {
-  color: #00a63e;
-}
-
-.overall-health-status.health-fair {
-  color: #d97706;
-}
-
-.overall-health-status.health-poor {
-  color: #dc2626;
-}
-
-.overall-health-status.health-neutral {
-  color: #71717a;
-}
-
 /* ---- Alert (shadcn-style) ---- */
 .alert {
   display: flex;

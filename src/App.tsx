@@ -215,7 +215,7 @@ function App() {
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* ---- Top section (non-scrolling) ---- */}
-          <div className="p-4 flex flex-col gap-4 text-center">
+          <div className="px-4 pt-2 pb-2 flex flex-col gap-2 text-center">
             {/* Pippin sprite (kept as-is) */}
             <PippinWidget
               isScanning={isScanning}

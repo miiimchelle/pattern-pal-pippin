@@ -131,7 +131,6 @@ export function Pippin({ status, overallConsistency }: Props) {
   // Re-pick on status/consistency change (useMemo key is the pair).
   const mood = useMemo(
     () => resolveMood(status, overallConsistency),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [status, overallConsistency],
   );
 

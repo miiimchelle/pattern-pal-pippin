@@ -7,8 +7,7 @@
   "editorType": ["figma", "dev"],
   "capabilities": ["inspect"],
   "networkAccess": {
-    "allowedDomains": ["https://api.figma.com", "*"],
-    "reasoning": "Pushes design system contribution data to a user-configured dashboard endpoint"
-  },
-  "enablePrivatePluginApi": true
+    "allowedDomains": ["https://api.figma.com"],
+    "reasoning": "Fetches team file data and library components from the Figma REST API"
+  }
 }

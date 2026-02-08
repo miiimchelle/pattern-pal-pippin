@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress, type PushStatus } from './hooks/usePluginMessages';
+import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
 import { Settings } from './components/Settings';
 import { Pippin, type PippinStatus } from './components/Pippin';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // ---- Helpers ----
 
@@ -54,24 +55,17 @@ function PippinWidget({
   error,
   selectedFrameScanResult,
   results,
-  pushStatus,
 }: {
   isScanning: boolean;
   scanProgress: ScanProgress | null;
   error: string | null;
   selectedFrameScanResult: SelectedFrameScanResult | null;
   results: PatternGroup[];
-  pushStatus: PushStatus;
 }) {
   let status: PippinStatus = 'idle';
   let consistency: number | null = null;
 
-  if (pushStatus === 'pushing') {
-    status = 'loading';
-  } else if (pushStatus === 'success') {
-    status = 'success';
-    consistency = 95;
-  } else if (error) {
+  if (error) {
     status = 'error';
   } else if (isScanning) {
     status = scanProgress ? 'checking' : 'loading';
@@ -144,14 +138,12 @@ function App() {
     showSettings,
     setShowSettings,
     error,
-    pushStatus,
     scan,
     scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
-    pushToDashboard,
   } = usePluginMessages();
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
@@ -177,6 +169,7 @@ function App() {
   const findingsCount = countFindings(selectedFrameScanResult);
 
   return (
+    <ErrorBoundary>
     <div className="h-screen bg-white flex flex-col pattern-pal-body">
       {/* ---- Header ---- */}
       <header className="p-4 border-b border-gray-200 flex items-start justify-between">
@@ -210,8 +203,8 @@ function App() {
           token={settings.token}
           libraryUrls={settings.libraryUrls}
           teamId={settings.teamId}
-          dashboardUrl={settings.dashboardUrl}
           onSave={saveSettings}
+          onBack={() => setShowSettings(false)}
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -224,7 +217,6 @@ function App() {
               error={error}
               selectedFrameScanResult={selectedFrameScanResult}
               results={results}
-              pushStatus={pushStatus}
             />
 
             {/* Overall Health */}
@@ -298,32 +290,6 @@ function App() {
               </div>
             )}
 
-            {/* Push to Dashboard */}
-            {results.length > 0 && (
-              <>
-                <button
-                  onClick={pushToDashboard}
-                  disabled={pushStatus === 'pushing'}
-                  className="pattern-pal-btn-secondary"
-                >
-                  {pushStatus === 'pushing'
-                    ? 'Pushing...'
-                    : pushStatus === 'success'
-                      ? 'Pushed!'
-                      : pushStatus === 'error'
-                        ? 'Push Failed \u2014 Retry?'
-                        : 'Push to Dashboard'}
-                </button>
-                {pushStatus === 'success' && settings.dashboardUrl && (
-                  <button
-                    onClick={() => openInFigma(settings.dashboardUrl)}
-                    className="w-full text-emerald-600 hover:text-emerald-700 text-sm font-medium py-1 underline underline-offset-2 transition-colors"
-                  >
-                    View Dashboard
-                  </button>
-                )}
-              </>
-            )}
           </div>
 
           {/* ---- Scrollable results area ---- */}
@@ -356,6 +322,7 @@ function App() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 

@@ -194,7 +194,7 @@ const HIERARCHY_VARIANT_KEYS = new Set([
   'level',
 ])
 
-function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
+function hasPrimaryFillStyle(node: SceneNode): boolean {
   if ('fillStyleId' in node) {
     const id = (node as GeometryMixin).fillStyleId
     if (typeof id === 'string' && id !== '') {
@@ -206,7 +206,7 @@ function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
   }
   if ('children' in node) {
     for (const child of (node as ChildrenMixin).children) {
-      if (hasPrimaryFillStyle(child, node.name)) return true
+      if (hasPrimaryFillStyle(child)) return true
     }
   }
   return false
@@ -219,14 +219,6 @@ function isPrimaryButton(node: InstanceNode): boolean {
       if (!HIERARCHY_VARIANT_KEYS.has(key.toLowerCase())) continue
       const val = props[key]
       if (typeof val === 'string' && val.toLowerCase() === 'primary') {
-        // #region agent log
-        debugLog(
-          'code.ts:isPrimaryButton',
-          'Matched via variant',
-          { nodeName: node.name, matchedKey: key, matchedVal: val },
-          'D'
-        )
-        // #endregion
         return true
       }
     }
@@ -234,9 +226,6 @@ function isPrimaryButton(node: InstanceNode): boolean {
   }
 
   const fillMatch = hasPrimaryFillStyle(node)
-  // #region agent log
-  debugLog('code.ts:isPrimaryButton', 'Fill style check', { nodeName: node.name, fillMatch }, 'F')
-  // #endregion
   if (fillMatch) {
     return true
   }
@@ -248,14 +237,6 @@ function isPrimaryButton(node: InstanceNode): boolean {
       !name.includes('secondary') &&
       !name.includes('outline') &&
       !name.includes('ghost'))
-  // #region agent log
-  debugLog(
-    'code.ts:isPrimaryButton',
-    'Name fallback check',
-    { nodeName: node.name, nameMatch },
-    'D'
-  )
-  // #endregion
   return nameMatch
 }
 
@@ -270,14 +251,6 @@ async function findButtonInstances(node: SceneNode, namesSeen: string[]): Promis
     if (componentName !== '(no main component)') namesSeen.push(componentName)
 
     const nameMatches = isButtonComponentName(componentName) || isButtonComponentName(instanceName)
-    // #region agent log
-    debugLog(
-      'code.ts:findButtonInstances',
-      'Instance node found',
-      { instanceName, componentName, nameMatches, nodeType: node.type },
-      'B,C'
-    )
-    // #endregion
     if (nameMatches) instances.push(node)
   }
 
@@ -293,54 +266,16 @@ async function findButtonInstances(node: SceneNode, namesSeen: string[]): Promis
 
 async function checkPrimaryButtonPerFrame(): Promise<{
   issues: RuleIssue[]
-  debug: {
-    frameCount: number
-    frameNames: string[]
-    buttonCount: number
-    pageChildTypes: string[]
-    instanceNamesSeen: string[]
-  }
 }> {
   const issues: RuleIssue[] = []
   const frames = figma.currentPage.children.filter(
     (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
   )
-  const pageChildTypes = figma.currentPage.children.map((c) => ({
-    type: c.type,
-    name: c.name,
-  }))
-  const pageChildTypesSummary = pageChildTypes.map((p) => `${p.type}:${p.name}`).slice(0, 8)
-
   const instanceNamesSeen: string[] = []
-  let totalButtons = 0
 
-  // #region agent log
-  debugLog(
-    'code.ts:checkPrimaryButtonPerFrame',
-    'Check started',
-    { containerCount: frames.length, containerNames: frames.slice(0, 10).map((f) => f.name) },
-    'B'
-  )
-  // #endregion
   for (const frame of frames) {
     const allButtonInstances = await findButtonInstances(frame, instanceNamesSeen)
-    totalButtons += allButtonInstances.length
     const primaryButtons = allButtonInstances.filter(isPrimaryButton)
-    // #region agent log
-    debugLog(
-      'code.ts:checkPrimaryButtonPerFrame:loop',
-      'Container checked',
-      {
-        frameName: frame.name,
-        frameType: frame.type,
-        totalButtonsInFrame: allButtonInstances.length,
-        primaryButtonCount: primaryButtons.length,
-        buttonNames: allButtonInstances.map((b) => b.name),
-        primaryNames: primaryButtons.map((b) => b.name),
-      },
-      'B,D,E'
-    )
-    // #endregion
 
     if (primaryButtons.length > 1) {
       issues.push({
@@ -354,13 +289,6 @@ async function checkPrimaryButtonPerFrame(): Promise<{
 
   return {
     issues,
-    debug: {
-      frameCount: frames.length,
-      frameNames: frames.map((f) => f.name),
-      buttonCount: totalButtons,
-      pageChildTypes: pageChildTypesSummary,
-      instanceNamesSeen: [...new Set(instanceNamesSeen)],
-    },
   }
 }
 
@@ -1251,9 +1179,6 @@ figma.on('selectionchange', () => {
 })
 
 figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
-  // #region agent log
-  debugLog('code.ts:onmessage', 'Message received from UI', { msgType: msg.type }, 'A')
-  // #endregion
   switch (msg.type) {
     case 'scan': {
       try {
@@ -1317,7 +1242,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       const saved = await figma.clientStorage.getAsync(STORAGE_KEY)
       figma.ui.postMessage({
         type: 'settings-loaded',
-        payload: saved || { token: '', libraryUrls: [], teamId: '', dashboardUrl: '' },
+        payload: saved || { token: '', libraryUrls: [], teamId: '' },
       })
       break
     }

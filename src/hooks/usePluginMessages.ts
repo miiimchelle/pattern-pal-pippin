@@ -99,54 +99,6 @@ export interface PluginSettings {
   token: string;
   libraryUrls: string[];
   teamId: string;
-  dashboardUrl: string;
-}
-
-// ---- Contribution push ----
-
-export interface ContributionPayload {
-  teamId: string;
-  timestamp: string;
-  patternCount: number;
-  patterns: Array<{
-    fingerprint: string;
-    frameCount: number;
-    consistency: number;
-    componentNames: string[];
-    libraryMatchCount: number;
-  }>;
-  componentUsageSummary: Record<string, number>;
-}
-
-export type PushStatus = 'idle' | 'pushing' | 'success' | 'error';
-
-export function buildContributionPayload(
-  results: PatternGroup[],
-  teamId: string,
-): ContributionPayload {
-  const componentUsageSummary: Record<string, number> = {};
-
-  const patterns = results.map((g) => {
-    // Aggregate component names from componentUsage
-    for (const comp of g.componentUsage) {
-      componentUsageSummary[comp.name] = (componentUsageSummary[comp.name] ?? 0) + 1;
-    }
-    return {
-      fingerprint: g.fingerprint,
-      frameCount: g.frames.length,
-      consistency: g.consistency,
-      componentNames: g.componentUsage.map((c) => c.name),
-      libraryMatchCount: g.libraryMatches.length,
-    };
-  });
-
-  return {
-    teamId,
-    timestamp: new Date().toISOString(),
-    patternCount: results.length,
-    patterns,
-    componentUsageSummary,
-  };
 }
 
 export function usePluginMessages() {
@@ -156,10 +108,9 @@ export function usePluginMessages() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
-  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '', dashboardUrl: '' });
+  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '' });
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pushStatus, setPushStatus] = useState<PushStatus>('idle');
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -242,22 +193,14 @@ export function usePluginMessages() {
   );
 
   const saveSettings = useCallback(
-    (token: string, libraryUrls: string[], teamId: string, dashboardUrl: string) => {
-      const newSettings = { token, libraryUrls, teamId, dashboardUrl };
+    (token: string, libraryUrls: string[], teamId: string) => {
+      const newSettings = { token, libraryUrls, teamId };
       setSettings(newSettings);
       postMessage('save-settings', newSettings);
       setShowSettings(false);
     },
     [postMessage],
   );
-
-  const pushToDashboard = useCallback(() => {
-    setPushStatus('pushing');
-    setTimeout(() => {
-      setPushStatus('success');
-      setTimeout(() => setPushStatus('idle'), 3000);
-    }, 2000);
-  }, []);
 
   const close = useCallback(() => {
     postMessage('close');
@@ -273,14 +216,12 @@ export function usePluginMessages() {
     showSettings,
     setShowSettings,
     error,
-    pushStatus,
     scan,
     scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
-    pushToDashboard,
     close,
   };
 }

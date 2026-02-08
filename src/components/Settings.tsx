@@ -4,22 +4,24 @@ interface Props {
   token: string;
   libraryUrls: string[];
   teamId: string;
-  dashboardUrl: string;
-  onSave: (token: string, urls: string[], teamId: string, dashboardUrl: string) => void;
+  onSave: (token: string, urls: string[], teamId: string) => void;
+  onBack: () => void;
 }
 
-export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, dashboardUrl: initialDashboardUrl, onSave }: Props) {
+export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, onSave, onBack }: Props) {
   const [token, setToken] = useState(initialToken);
   const [urlsText, setUrlsText] = useState(initialUrls.join('\n'));
   const [teamId, setTeamId] = useState(initialTeamId);
-  const [dashboardUrl, setDashboardUrl] = useState(initialDashboardUrl);
+
+  const canSave = token.trim().length > 0 && teamId.trim().length > 0;
 
   const handleSave = () => {
+    if (!canSave) return;
     const urls = urlsText
       .split('\n')
       .map((u) => u.trim())
       .filter((u) => u.length > 0);
-    onSave(token, urls, teamId, dashboardUrl);
+    onSave(token, urls, teamId);
   };
 
   return (
@@ -33,10 +35,12 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="figd_..."
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className={`w-full border rounded px-3 py-2 text-sm ${
+            token.trim().length === 0 ? 'border-red-300' : 'border-gray-300'
+          }`}
         />
         <p className="text-xs text-gray-500 mt-1">
-          Get from Figma → Settings → Personal access tokens
+          Get from Figma &rarr; Settings &rarr; Personal access tokens
         </p>
       </div>
 
@@ -49,7 +53,9 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
           value={teamId}
           onChange={(e) => setTeamId(e.target.value)}
           placeholder="123456789"
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className={`w-full border rounded px-3 py-2 text-sm ${
+            teamId.trim().length === 0 ? 'border-red-300' : 'border-gray-300'
+          }`}
         />
         <p className="text-xs text-gray-500 mt-1">
           Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
@@ -69,28 +75,21 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Dashboard URL
-        </label>
-        <input
-          type="text"
-          value={dashboardUrl}
-          onChange={(e) => setDashboardUrl(e.target.value)}
-          placeholder="https://your-dashboard.example.com/api/contribute"
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Endpoint to push team scan data for design system contribution tracking
-        </p>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Save Settings
+        </button>
+        <button
+          onClick={onBack}
+          className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded transition-colors"
+        >
+          Cancel
+        </button>
       </div>
-
-      <button
-        onClick={handleSave}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors"
-      >
-        Save Settings
-      </button>
     </div>
   );
 }

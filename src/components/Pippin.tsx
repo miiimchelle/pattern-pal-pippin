@@ -59,6 +59,7 @@ function spriteStyle(key: string): React.CSSProperties {
     backgroundSize: `${IMG_W}px ${IMG_H}px`,
     backgroundPosition: `${offsetX}px ${offsetY}px`,
     backgroundRepeat: 'no-repeat',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
     flexShrink: 0,
   };
@@ -135,16 +136,16 @@ export function Pippin({ status, overallConsistency }: Props) {
   );
 
   return (
-    <div className="flex flex-col items-center -gap-1" style={{ gap: 0 }}>
-      {/* Speech bubble — above the sprite */}
-      <div className="relative bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-700 leading-snug text-center max-w-[260px]">
+    <div className="flex flex-col items-center" style={{ gap: 0 }}>
+      {/* Speech bubble — above the sprite, overlapping slightly */}
+      <div className="relative z-10 bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-700 leading-snug text-center max-w-[260px]">
         {mood.line}
         {/* Tail pointing down */}
         <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-0 h-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-gray-100" />
       </div>
 
-      {/* Sprite — centred */}
-      <div style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
+      {/* Sprite — centred, pulled up so bubble overlaps the top */}
+      <div className="animate-float -mt-3" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
     </div>
   );
 }

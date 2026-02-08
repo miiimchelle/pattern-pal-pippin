@@ -208,8 +208,8 @@ function App() {
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* ---- Top section (non-scrolling) ---- */}
-          <div className="px-4 pt-2 pb-2 flex flex-col gap-2 text-center">
+          {/* ---- Top section (non-scrolling, 3:7 ratio) ---- */}
+          <div className="px-4 pt-1 pb-1 flex flex-col gap-1 text-center overflow-hidden" style={{ flex: 2 }}>
             {/* Pippin sprite (kept as-is) */}
             <PippinWidget
               isScanning={isScanning}
@@ -292,8 +292,8 @@ function App() {
 
           </div>
 
-          {/* ---- Scrollable results area ---- */}
-          <div className="flex-1 overflow-auto">
+          {/* ---- Scrollable results area (7:3 ratio) ---- */}
+          <div className="overflow-auto" style={{ flex: 3 }}>
             {isScanning && !scanProgress && !error && (
               <div className="loading">Scanning design file...</div>
             )}

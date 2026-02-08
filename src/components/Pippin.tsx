@@ -141,10 +141,22 @@ export function Pippin({ status, overallConsistency }: Props) {
       <div className="animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
 
       {/* Speech bubble — to the right of the sprite */}
-      <div className="relative z-10 bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-700 leading-snug text-center max-w-[260px]">
+      <div
+        className="relative z-10 bg-white rounded-xl px-4 py-2.5 text-left text-sm text-[#374151] leading-snug max-w-[260px]"
+        style={{
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
         {mood.line}
-        {/* Tail pointing left */}
-        <div className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-gray-100" />
+        {/* Diamond beak on the left, pointing toward the sprite */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-2.5 h-3 bg-white"
+          style={{
+            clipPath: 'polygon(0% 50%, 50% 0%, 100% 50%, 50% 100%)',
+            filter: 'drop-shadow(-1px 0 2px rgba(0,0,0,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.06))',
+          }}
+          aria-hidden
+        />
       </div>
     </div>
   );

@@ -1,9 +1,42 @@
 import { useState } from 'react';
-import { usePluginMessages, type PatternGroup } from './hooks/usePluginMessages';
+import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
 import { Settings } from './components/Settings';
+import { Pippin, type PippinStatus } from './components/Pippin';
+
+// Derive Pippin's status and consistency from app state
+function PippinWidget({
+  isScanning,
+  scanProgress,
+  error,
+  selectedFrameScanResult,
+  results,
+}: {
+  isScanning: boolean;
+  scanProgress: ScanProgress | null;
+  error: string | null;
+  selectedFrameScanResult: SelectedFrameScanResult | null;
+  results: PatternGroup[];
+}) {
+  let status: PippinStatus = 'idle';
+  let consistency: number | null = null;
+
+  if (error) {
+    status = 'error';
+  } else if (isScanning) {
+    status = scanProgress ? 'checking' : 'loading';
+  } else if (selectedFrameScanResult) {
+    status = 'success';
+    consistency = selectedFrameScanResult.overallConsistency;
+  } else if (results.length > 0) {
+    status = 'success';
+    consistency = null; // team-scan only — generic success
+  }
+
+  return <Pippin status={status} overallConsistency={consistency} />;
+}
 
 function App() {
   const {
@@ -83,6 +116,13 @@ function App() {
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="p-4 flex flex-col gap-2">
+            <PippinWidget
+              isScanning={isScanning}
+              scanProgress={scanProgress}
+              error={error}
+              selectedFrameScanResult={selectedFrameScanResult}
+              results={results}
+            />
             <button
               onClick={scan}
               disabled={isScanning || !selectedFrame}

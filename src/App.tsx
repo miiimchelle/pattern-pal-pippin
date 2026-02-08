@@ -141,7 +141,7 @@ function App() {
     <ErrorBoundary>
     <div className="h-screen bg-white flex flex-col pattern-pal-body">
       {/* ---- Header ---- */}
-      <header className="p-4 border-b border-gray-200 flex items-start justify-between">
+      <header className="h-fit max-h-[50px] p-4 border-b border-gray-200 flex items-start justify-between">
         <div>
           <h1 className="pattern-pal-h1">Pattern Pal</h1>
         </div>
@@ -178,7 +178,7 @@ function App() {
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* ---- Top section (non-scrolling, 3:7 ratio) ---- */}
-          <div className="px-4 pt-1 pb-1 flex flex-col gap-1 text-center overflow-hidden" style={{ flex: 2 }}>
+          <div className="px-4 pt-1 pb-1 flex flex-col gap-1 text-center">
             {/* Pippin sprite (kept as-is) */}
             <PippinWidget
               isScanning={isScanning}
@@ -259,7 +259,7 @@ function App() {
           </div>
 
           {/* ---- Scrollable results area (7:3 ratio) ---- */}
-          <div className="overflow-auto" style={{ flex: 3 }}>
+          <div className="flex-1 overflow-auto">
             {isScanning && !scanProgress && !error && (
               <div className="loading">Scanning design file...</div>
             )}

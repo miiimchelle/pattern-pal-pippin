@@ -114,7 +114,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
       {/* Empty state */}
       {teamFileResults.length === 0 && libraryMatches.length === 0 && buttonIssues.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon">&check;</div>
+          <div className="empty-state-icon"></div>
           <div className="empty-state-title">No violations found</div>
           <div className="empty-state-description">Your design follows the pattern rules</div>
         </div>

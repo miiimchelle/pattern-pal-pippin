@@ -117,6 +117,7 @@ function App() {
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
   const [selectedFrameName, setSelectedFrameName] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'frame' | 'team'>('frame');
 
   const handleFrameClick = (frameId: string, fileKey: string | undefined, group: PatternGroup) => {
     setSelectedGroup(group);
@@ -177,8 +178,24 @@ function App() {
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* ---- Top section (non-scrolling, 3:7 ratio) ---- */}
-          <div className="px-4 pt-1 pb-1 flex flex-col gap-1 text-center">
+          {/* ---- Tab bar ---- */}
+          <div className="pattern-pal-tabs">
+            <button
+              className={`pattern-pal-tab ${activeTab === 'frame' ? 'pattern-pal-tab-active' : ''}`}
+              onClick={() => setActiveTab('frame')}
+            >
+              Scan frame
+            </button>
+            <button
+              className={`pattern-pal-tab ${activeTab === 'team' ? 'pattern-pal-tab-active' : ''}`}
+              onClick={() => setActiveTab('team')}
+            >
+              Scan team files
+            </button>
+          </div>
+
+          {/* ---- Top section (non-scrolling) ---- */}
+          <div className="px-4 pt-4 pb-4 flex flex-col gap-1 text-center">
             {/* Pippin sprite (kept as-is) */}
             <PippinWidget
               isScanning={isScanning}
@@ -188,47 +205,42 @@ function App() {
               results={results}
             />
 
-            {/* Alert — team comparison */}
-            <TeamAlert result={selectedFrameScanResult} />
+            {activeTab === 'frame' ? (
+              <>
+                {/* Alert — team comparison */}
+                <TeamAlert result={selectedFrameScanResult} />
 
-            {/* Settings prompt alert (when no token/teamId) */}
-            {(!settings.token || !settings.teamId) && (
-              <div className="alert">
-                <div className="alert-body">
-                  Add your Figma token and Team ID in settings to scan and compare against other team files
-                </div>
-              </div>
-            )}
+                {/* Findings header */}
+                {selectedFrameScanResult && (
+                  <ViolationsHeader count={findingsCount} />
+                )}
 
-            {/* Findings header */}
-            {selectedFrameScanResult && (
-              <ViolationsHeader count={findingsCount} />
-            )}
+                {/* Primary CTA */}
+                <button
+                  onClick={scan}
+                  disabled={isScanning || !selectedFrame}
+                  className="pattern-pal-btn w-full"
+                  title="Scan selected frame and compare to design library"
+                >
+                  {isScanning && !scanProgress ? 'Checking...' : 'Scan'}
+                </button>
 
-            {/* Primary + Secondary CTAs — inline */}
-            <div className="flex gap-2">
-              <button
-                onClick={scan}
-                disabled={isScanning || !selectedFrame}
-                className="pattern-pal-btn"
-                title="Scan selected frame and compare to team files and design library"
-              >
-                {isScanning && !scanProgress ? 'Checking...' : 'Run Check'}
-              </button>
-
-              {settings.teamId && settings.token && (
+                {!selectedFrame && (
+                  <p className="text-xs text-gray-500 mt-1">Select a frame to scan.</p>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Primary CTA */}
                 <button
                   onClick={scanTeam}
-                  disabled={isScanning}
-                  className="pattern-pal-btn-secondary"
+                  disabled={isScanning || !settings.token || !settings.teamId}
+                  className="pattern-pal-btn w-full"
+                  title="Scan and compare against other team files"
                 >
-                  {isScanning && scanProgress ? 'Scanning Team...' : 'Scan Team Files'}
+                  {isScanning && scanProgress ? 'Scanning Team...' : 'Scan'}
                 </button>
-              )}
-            </div>
-
-            {!selectedFrame && (
-              <p className="text-xs text-gray-500 -mt-1">Select a frame to scan.</p>
+              </>
             )}
 
             {/* Scan progress */}
@@ -260,6 +272,16 @@ function App() {
 
           {/* ---- Scrollable results area (7:3 ratio) ---- */}
           <div className="flex-1 overflow-auto">
+            {/* Settings prompt (team tab, no credentials) */}
+            {activeTab === 'team' && (!settings.token || !settings.teamId) && !isScanning && !error && (
+              <div className="px-4">
+                <div className="alert">
+                  <div className="alert-body">
+                    Add your Figma token and Team ID in settings to scan and compare against other team files
+                  </div>
+                </div>
+              </div>
+            )}
             {isScanning && !scanProgress && !error && (
               <div className="loading">Scanning design file...</div>
             )}

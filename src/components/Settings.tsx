@@ -25,70 +25,73 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
   };
 
   return (
-    <div className="p-4 flex flex-col gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Figma Personal Access Token
-        </label>
-        <input
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="figd_..."
-          className={`w-full border rounded px-3 py-2 text-sm ${
-            token.trim().length === 0 ? 'border-red-300' : 'border-gray-300'
-          }`}
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Get from Figma &rarr; Settings &rarr; Personal access tokens
-        </p>
-      </div>
+    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body">
+      <div className="px-4 pt-1 pb-4 flex flex-col gap-4">
+        <div className="violations-header" style={{ marginBottom: 0 }}>
+          Settings
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Figma Team ID
-        </label>
-        <input
-          type="text"
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          placeholder="123456789"
-          className={`w-full border rounded px-3 py-2 text-sm ${
-            teamId.trim().length === 0 ? 'border-red-300' : 'border-gray-300'
-          }`}
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
-        </p>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Figma Personal Access Token
+          </label>
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="figd_..."
+            className={`pattern-pal-input ${token.trim().length === 0 ? 'pattern-pal-input-error' : ''}`}
+          />
+          <p className="pattern-pal-message mt-1">
+            Get from Figma &rarr; Settings &rarr; Personal access tokens
+          </p>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Library File URLs (one per line)
-        </label>
-        <textarea
-          value={urlsText}
-          onChange={(e) => setUrlsText(e.target.value)}
-          placeholder="https://www.figma.com/design/ABC123/Design-System"
-          rows={4}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-        />
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Figma Team ID
+          </label>
+          <input
+            type="text"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="123456789"
+            className={`pattern-pal-input ${teamId.trim().length === 0 ? 'pattern-pal-input-error' : ''}`}
+          />
+          <p className="pattern-pal-message mt-1">
+            Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
+          </p>
+        </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={handleSave}
-          disabled={!canSave}
-          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          Save Settings
-        </button>
-        <button
-          onClick={onBack}
-          className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded transition-colors"
-        >
-          Cancel
-        </button>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Library File URLs (one per line)
+          </label>
+          <textarea
+            value={urlsText}
+            onChange={(e) => setUrlsText(e.target.value)}
+            placeholder="https://www.figma.com/design/ABC123/Design-System"
+            rows={4}
+            className="pattern-pal-textarea"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            className="pattern-pal-btn flex-1"
+          >
+            Save Settings
+          </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="pattern-pal-btn-secondary flex-1"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

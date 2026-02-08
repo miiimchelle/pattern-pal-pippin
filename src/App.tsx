@@ -34,7 +34,7 @@ function countFindings(result: SelectedFrameScanResult | null): number {
   return count;
 }
 
-// ---- Pippin widget (unchanged logic) ----
+// ---- Pippin widget ----
 
 function PippinWidget({
   isScanning,
@@ -101,13 +101,16 @@ function App() {
   const {
     results,
     selectedFrameScanResult,
-    isScanning,
-    scanProgress,
+    isScanningFrame,
+    isScanningTeam,
+    frameScanProgress,
+    teamScanProgress,
     selectedFrame,
     settings,
     showSettings,
     setShowSettings,
-    error,
+    frameError,
+    teamError,
     scan,
     scanTeam,
     zoomToFrame,
@@ -138,6 +141,10 @@ function App() {
   };
 
   const findingsCount = countFindings(selectedFrameScanResult);
+
+  const isScanning = activeTab === 'frame' ? isScanningFrame : isScanningTeam;
+  const scanProgress = activeTab === 'frame' ? frameScanProgress : teamScanProgress;
+  const error = activeTab === 'frame' ? frameError : teamError;
 
   return (
     <ErrorBoundary>
@@ -197,13 +204,13 @@ function App() {
 
           {/* ---- Top section (non-scrolling) ---- */}
           <div className="px-4 pt-4 pb-4 flex flex-col gap-1 text-center">
-            {/* Pippin sprite (kept as-is) */}
+            {/* Pippin sprite */}
             <PippinWidget
               isScanning={isScanning}
               scanProgress={scanProgress}
               error={error}
-              selectedFrameScanResult={selectedFrameScanResult}
-              results={results}
+              selectedFrameScanResult={activeTab === 'frame' ? selectedFrameScanResult : null}
+              results={activeTab === 'team' ? results : []}
             />
 
             {activeTab === 'frame' ? (
@@ -219,11 +226,11 @@ function App() {
                 {/* Primary CTA */}
                 <button
                   onClick={scan}
-                  disabled={isScanning || !selectedFrame}
+                  disabled={isScanningFrame || !selectedFrame}
                   className="pattern-pal-btn w-full"
                   title="Scan selected frame and compare to design library"
                 >
-                  {isScanning && !scanProgress ? 'Checking...' : 'Scan'}
+                  {isScanningFrame && !frameScanProgress ? 'Checking...' : 'Scan'}
                 </button>
 
                 {!selectedFrame && (
@@ -235,16 +242,16 @@ function App() {
                 {/* Primary CTA */}
                 <button
                   onClick={scanTeam}
-                  disabled={isScanning || !settings.token || !settings.teamId}
+                  disabled={isScanningTeam || !settings.token || !settings.teamId}
                   className="pattern-pal-btn w-full"
                   title="Scan and compare against other team files"
                 >
-                  {isScanning && scanProgress ? 'Scanning Team...' : 'Scan'}
+                  {isScanningTeam && teamScanProgress ? 'Scanning Team...' : 'Scan'}
                 </button>
               </>
             )}
 
-            {/* Scan progress */}
+            {/* Scan progress (scoped to active tab) */}
             {scanProgress && (
               <div className="mt-1">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -260,7 +267,7 @@ function App() {
               </div>
             )}
 
-            {/* Error — shown as empty-state style */}
+            {/* Error (scoped to active tab) */}
             {error && (
               <div className="empty-state">
                 <div className="empty-state-icon">&#9888;&#65039;</div>
@@ -271,42 +278,53 @@ function App() {
 
           </div>
 
-          {/* ---- Scrollable results area (7:3 ratio) ---- */}
+          {/* ---- Scrollable results area ---- */}
           <div className="flex-1 overflow-auto">
-            {/* Settings prompt (team tab, no credentials) */}
-            {activeTab === 'team' && (!settings.token || !settings.teamId) && !isScanning && !error && (
-              <div className="px-4">
-                <div className="alert">
-                  <div className="alert-body">
-                    Add your Figma token and Team ID in settings to scan and compare against other team files
+            {activeTab === 'frame' ? (
+              <>
+                {isScanningFrame && !frameScanProgress && !frameError && (
+                  <div className="loading">Scanning design file...</div>
+                )}
+                {!isScanningFrame && selectedGroup ? (
+                  <FrameDetailPanel
+                    frame={selectedFrame}
+                    group={selectedGroup}
+                    frameName={selectedFrameName || undefined}
+                    onBack={handleBackFromDetail}
+                    onOpenInFigma={openInFigma}
+                  />
+                ) : !isScanningFrame && selectedFrameScanResult ? (
+                  <SelectedFrameScanResults
+                    result={selectedFrameScanResult}
+                    onOpenInFigma={openInFigma}
+                    onZoomToFrame={zoomToFrame}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <>
+                {/* Settings prompt (team tab, no credentials) */}
+                {(!settings.token || !settings.teamId) && !isScanningTeam && !teamError && (
+                  <div className="px-4">
+                    <div className="alert">
+                      <div className="alert-body">
+                        Add your Figma token and Team ID in settings to scan and compare against other team files
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )}
+                {isScanningTeam && !teamScanProgress && !teamError && (
+                  <div className="loading">Scanning design file...</div>
+                )}
+                {!isScanningTeam ? (
+                  <PatternResults
+                    groups={results}
+                    onFrameClick={handleFrameClick}
+                    onOpenInFigma={openInFigma}
+                  />
+                ) : null}
+              </>
             )}
-            {isScanning && !scanProgress && !error && (
-              <div className="loading">Scanning design file...</div>
-            )}
-            {!isScanning && selectedGroup ? (
-              <FrameDetailPanel
-                frame={selectedFrame}
-                group={selectedGroup}
-                frameName={selectedFrameName || undefined}
-                onBack={handleBackFromDetail}
-                onOpenInFigma={openInFigma}
-              />
-            ) : !isScanning && selectedFrameScanResult ? (
-              <SelectedFrameScanResults
-                result={selectedFrameScanResult}
-                onOpenInFigma={openInFigma}
-                onZoomToFrame={zoomToFrame}
-              />
-            ) : !isScanning ? (
-              <PatternResults
-                groups={results}
-                onFrameClick={handleFrameClick}
-                onOpenInFigma={openInFigma}
-              />
-            ) : null}
           </div>
         </div>
       )}

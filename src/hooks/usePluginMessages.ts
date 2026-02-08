@@ -105,12 +105,16 @@ export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
     useState<SelectedFrameScanResult | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+  const [isScanningFrame, setIsScanningFrame] = useState(false);
+  const [isScanningTeam, setIsScanningTeam] = useState(false);
+  const [frameScanProgress, setFrameScanProgress] = useState<ScanProgress | null>(null);
+  const [teamScanProgress, setTeamScanProgress] = useState<ScanProgress | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
   const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '' });
   const [showSettings, setShowSettings] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [frameError, setFrameError] = useState<string | null>(null);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [activeScanType, setActiveScanType] = useState<'frame' | 'team' | null>(null);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -124,16 +128,20 @@ export function usePluginMessages() {
       switch (msg.type) {
         case 'scan-results':
           setResults(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          setIsScanningTeam(false);
+          setTeamScanProgress(null);
           break;
         case 'scan-file-results':
           setSelectedFrameScanResult(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          setIsScanningFrame(false);
+          setFrameScanProgress(null);
           break;
         case 'scan-progress':
-          setScanProgress(msg.payload);
+          if (activeScanType === 'frame') {
+            setFrameScanProgress(msg.payload);
+          } else {
+            setTeamScanProgress(msg.payload);
+          }
           break;
         case 'selection-change':
           setSelectedFrame(msg.payload);
@@ -145,9 +153,15 @@ export function usePluginMessages() {
           setSettings(msg.payload);
           break;
         case 'error':
-          setError(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          if (activeScanType === 'frame') {
+            setFrameError(msg.payload);
+            setIsScanningFrame(false);
+            setFrameScanProgress(null);
+          } else {
+            setTeamError(msg.payload);
+            setIsScanningTeam(false);
+            setTeamScanProgress(null);
+          }
           break;
       }
     };
@@ -155,19 +169,21 @@ export function usePluginMessages() {
     window.addEventListener('message', handler);
     postMessage('load-settings');
     return () => window.removeEventListener('message', handler);
-  }, [postMessage]);
+  }, [postMessage, activeScanType]);
 
   const scan = useCallback(() => {
-    setError(null);
-    setIsScanning(true);
-    setScanProgress(null);
+    setFrameError(null);
+    setIsScanningFrame(true);
+    setFrameScanProgress(null);
+    setActiveScanType('frame');
     postMessage('scan', settings);
   }, [postMessage, settings]);
 
   const scanTeam = useCallback(() => {
-    setError(null);
-    setIsScanning(true);
-    setScanProgress(null);
+    setTeamError(null);
+    setIsScanningTeam(true);
+    setTeamScanProgress(null);
+    setActiveScanType('team');
     postMessage('scan-team', settings);
   }, [postMessage, settings]);
 
@@ -209,13 +225,16 @@ export function usePluginMessages() {
   return {
     results,
     selectedFrameScanResult,
-    isScanning,
-    scanProgress,
+    isScanningFrame,
+    isScanningTeam,
+    frameScanProgress,
+    teamScanProgress,
     selectedFrame,
     settings,
     showSettings,
     setShowSettings,
-    error,
+    frameError,
+    teamError,
     scan,
     scanTeam,
     zoomToFrame,

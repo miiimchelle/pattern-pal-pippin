@@ -49,12 +49,14 @@ function App() {
     showSettings,
     setShowSettings,
     error,
+    pushStatus,
     scan,
     scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
+    pushToDashboard,
   } = usePluginMessages();
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
@@ -111,6 +113,7 @@ function App() {
           token={settings.token}
           libraryUrls={settings.libraryUrls}
           teamId={settings.teamId}
+          dashboardUrl={settings.dashboardUrl}
           onSave={saveSettings}
         />
       ) : (
@@ -162,6 +165,21 @@ function App() {
               <p className="text-xs text-amber-600 mt-1">
                 Add your Figma token and Team ID in settings to scan and compare against other team files
               </p>
+            )}
+            {results.length > 0 && settings.dashboardUrl && (
+              <button
+                onClick={pushToDashboard}
+                disabled={pushStatus === 'pushing'}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium py-2 px-4 rounded transition-colors"
+              >
+                {pushStatus === 'pushing'
+                  ? 'Pushing...'
+                  : pushStatus === 'success'
+                    ? 'Pushed!'
+                    : pushStatus === 'error'
+                      ? 'Push Failed — Retry?'
+                      : 'Push to Dashboard'}
+              </button>
             )}
           </div>
           <div className="flex-1 overflow-auto">

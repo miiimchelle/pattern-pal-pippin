@@ -1,6 +1,13 @@
 import type { PatternGroup } from '../hooks/usePluginMessages';
 import { MatchDetails } from './MatchDetails';
 
+function consistencyBadgeClass(c: number): string {
+  if (c >= 90) return 'badge bg-green-50 text-green-700!';
+  if (c >= 75) return 'badge bg-blue-50 text-blue-700!';
+  if (c >= 60) return 'badge bg-amber-50 text-amber-700!';
+  return 'badge';
+}
+
 interface Props {
   groups: PatternGroup[];
   onFrameClick: (frameId: string, fileKey: string | undefined, group: PatternGroup) => void;
@@ -10,8 +17,8 @@ interface Props {
 export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
   if (groups.length === 0) {
     return (
-      <div className="empty-state p-4">
-        <div className="empty-state-icon">📭</div>
+      <div className="empty-state">
+        <div className="empty-state-icon">&check;</div>
         <div className="empty-state-title">No patterns found</div>
         <div className="empty-state-description">Try a page with more frames.</div>
       </div>
@@ -19,74 +26,67 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
   }
 
   return (
-    <div className="violations-container flex flex-col gap-4 p-4">
-      {groups.map((group) => {
-        const fileCount = new Set(group.frames.map((f) => f.fileKey || '__local__')).size;
-        return (
-          <div key={group.fingerprint} className="violation border border-gray-200 rounded-lg p-3">
-            <div className="violations-header flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-gray-700">
-                {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
-                <span className="text-gray-400 ml-2 font-normal">
-                  {group.frames[0].width}×{group.frames[0].height}px
+    <div className="p-4">
+      <div className="violations-header">
+        <span>Patterns Found</span>
+        <span className="status-count">{groups.length}</span>
+      </div>
+      <div className="violations-container">
+        {groups.map((group) => {
+          const fileCount = new Set(group.frames.map((f) => f.fileKey || '__local__')).size;
+          return (
+            <div key={group.fingerprint} className="violation">
+              {/* Group header */}
+              <div className="frame-name">
+                <span>
+                  {group.frames.length} frame{group.frames.length > 1 ? 's' : ''}
                 </span>
-                {fileCount >= 2 && (
-                  <span className="text-indigo-500 ml-2 text-xs font-normal">
-                    {fileCount} files
+                {group.frames.length >= 2 && (
+                  <span className={consistencyBadgeClass(group.consistency)}>
+                    {group.consistency}% consistent
                   </span>
                 )}
               </div>
-              {group.frames.length >= 2 && (
-                <span
-                  className={`status-count text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    group.consistency >= 90
-                      ? 'bg-green-100 text-green-700'
-                      : group.consistency >= 75
-                        ? 'bg-blue-100 text-blue-700'
-                        : group.consistency >= 60
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-red-100 text-red-700'
-                  }`}
-                  title="Structural consistency between frames within the team files"
-                >
-                  {group.consistency}% consistent
-                </span>
-              )}
-            </div>
+              <div className="pattern-pal-message" style={{ marginBottom: 8 }}>
+                {group.frames[0].width}&times;{group.frames[0].height}px
+                {fileCount >= 2 && <span> &middot; {fileCount} files</span>}
+              </div>
 
-            <div className="flex flex-col gap-1 mb-2">
-              {group.frames.map((frame) => (
-                <button
-                  key={`${frame.fileKey || 'local'}-${frame.id}`}
-                  onClick={() => onFrameClick(frame.id, frame.fileKey, group)}
-                  className="violation text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
-                >
-                  <span className="frame-name truncate flex items-center gap-1.5">
-                    {frame.name}
-                    {frame.fileName && (
-                      <span className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded shrink-0">
-                        {frame.fileName}
+              {/* Frame list */}
+              <div className="flex flex-col gap-1 mb-2">
+                {group.frames.map((frame) => (
+                  <button
+                    key={`${frame.fileKey || 'local'}-${frame.id}`}
+                    onClick={() => onFrameClick(frame.id, frame.fileKey, group)}
+                    className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
+                  >
+                    <span className="truncate flex items-center gap-1.5" style={{ fontWeight: 500, fontSize: 13, color: '#09090b' }}>
+                      {frame.name}
+                      {frame.fileName && (
+                        <span className="badge bg-indigo-50 text-indigo-600!">
+                          {frame.fileName}
+                        </span>
+                      )}
+                    </span>
+                    {frame.componentNames && frame.componentNames.length > 0 && (
+                      <span className="text-xs text-gray-400 ml-2 shrink-0">
+                        {frame.componentNames.length} components
                       </span>
                     )}
-                  </span>
-                  {frame.componentNames && frame.componentNames.length > 0 && (
-                    <span className="text-xs text-gray-400 ml-2 shrink-0">
-                      {frame.componentNames.length} components
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
 
-            <MatchDetails
-              componentUsage={group.componentUsage || []}
-              nameMatches={group.nameMatches || []}
-              libraryMatches={group.libraryMatches || []}
-              onOpenInFigma={onOpenInFigma}
-            />
-          </div>
-        );
-      })}
+              <MatchDetails
+                componentUsage={group.componentUsage || []}
+                nameMatches={group.nameMatches || []}
+                libraryMatches={group.libraryMatches || []}
+                onOpenInFigma={onOpenInFigma}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

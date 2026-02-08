@@ -1153,4 +1153,4 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
 };
 
 // Show UI
-figma.showUI(__html__, { width: 480, height: 700 });
+figma.showUI(__html__, { width: 560, height: 900 });

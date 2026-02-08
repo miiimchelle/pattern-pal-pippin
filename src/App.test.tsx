@@ -7,7 +7,6 @@ describe('App', () => {
   it('renders Pattern Pal header', () => {
     render(<App />)
     expect(screen.getByText('Pattern Pal')).toBeInTheDocument()
-    expect(screen.getByText(/Find similar patterns/)).toBeInTheDocument()
   })
 
   it('renders settings gear button', () => {
@@ -15,9 +14,9 @@ describe('App', () => {
     expect(screen.getByTitle('Settings')).toBeInTheDocument()
   })
 
-  it('shows Scan Selected Frame button', () => {
+  it('shows Run Check button', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: /Scan Selected Frame/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Run Check/i })).toBeInTheDocument()
   })
 
   it('shows select frame hint when no frame selected', () => {

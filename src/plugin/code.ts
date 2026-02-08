@@ -1141,7 +1141,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       const saved = await figma.clientStorage.getAsync(STORAGE_KEY);
       figma.ui.postMessage({
         type: 'settings-loaded',
-        payload: saved || { token: '', libraryUrls: [], teamId: '' },
+        payload: saved || { token: '', libraryUrls: [], teamId: '', dashboardUrl: '' },
       });
       break;
     }

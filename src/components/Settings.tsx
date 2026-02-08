@@ -4,20 +4,22 @@ interface Props {
   token: string;
   libraryUrls: string[];
   teamId: string;
-  onSave: (token: string, urls: string[], teamId: string) => void;
+  dashboardUrl: string;
+  onSave: (token: string, urls: string[], teamId: string, dashboardUrl: string) => void;
 }
 
-export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, onSave }: Props) {
+export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, dashboardUrl: initialDashboardUrl, onSave }: Props) {
   const [token, setToken] = useState(initialToken);
   const [urlsText, setUrlsText] = useState(initialUrls.join('\n'));
   const [teamId, setTeamId] = useState(initialTeamId);
+  const [dashboardUrl, setDashboardUrl] = useState(initialDashboardUrl);
 
   const handleSave = () => {
     const urls = urlsText
       .split('\n')
       .map((u) => u.trim())
       .filter((u) => u.length > 0);
-    onSave(token, urls, teamId);
+    onSave(token, urls, teamId, dashboardUrl);
   };
 
   return (
@@ -65,6 +67,22 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
           rows={4}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Dashboard URL
+        </label>
+        <input
+          type="text"
+          value={dashboardUrl}
+          onChange={(e) => setDashboardUrl(e.target.value)}
+          placeholder="https://your-dashboard.example.com/api/contribute"
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Endpoint to push team scan data for design system contribution tracking
+        </p>
       </div>
 
       <button

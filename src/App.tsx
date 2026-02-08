@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress } from './hooks/usePluginMessages';
+import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress, type PushStatus } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
@@ -13,17 +13,24 @@ function PippinWidget({
   error,
   selectedFrameScanResult,
   results,
+  pushStatus,
 }: {
   isScanning: boolean;
   scanProgress: ScanProgress | null;
   error: string | null;
   selectedFrameScanResult: SelectedFrameScanResult | null;
   results: PatternGroup[];
+  pushStatus: PushStatus;
 }) {
   let status: PippinStatus = 'idle';
   let consistency: number | null = null;
 
-  if (error) {
+  if (pushStatus === 'pushing') {
+    status = 'loading';
+  } else if (pushStatus === 'success') {
+    status = 'success';
+    consistency = 95;
+  } else if (error) {
     status = 'error';
   } else if (isScanning) {
     status = scanProgress ? 'checking' : 'loading';
@@ -49,12 +56,14 @@ function App() {
     showSettings,
     setShowSettings,
     error,
+    pushStatus,
     scan,
     scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
+    pushToDashboard,
   } = usePluginMessages();
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
@@ -111,6 +120,7 @@ function App() {
           token={settings.token}
           libraryUrls={settings.libraryUrls}
           teamId={settings.teamId}
+          dashboardUrl={settings.dashboardUrl}
           onSave={saveSettings}
         />
       ) : (
@@ -122,6 +132,7 @@ function App() {
               error={error}
               selectedFrameScanResult={selectedFrameScanResult}
               results={results}
+              pushStatus={pushStatus}
             />
             <button
               onClick={scan}
@@ -162,6 +173,31 @@ function App() {
               <p className="text-xs text-amber-600 mt-1">
                 Add your Figma token and Team ID in settings to scan and compare against other team files
               </p>
+            )}
+            {results.length > 0 && (
+              <>
+                <button
+                  onClick={pushToDashboard}
+                  disabled={pushStatus === 'pushing'}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white font-medium py-2 px-4 rounded transition-colors"
+                >
+                  {pushStatus === 'pushing'
+                    ? 'Pushing...'
+                    : pushStatus === 'success'
+                      ? 'Pushed!'
+                      : pushStatus === 'error'
+                        ? 'Push Failed — Retry?'
+                        : 'Push to Dashboard'}
+                </button>
+                {pushStatus === 'success' && settings.dashboardUrl && (
+                  <button
+                    onClick={() => openInFigma(settings.dashboardUrl)}
+                    className="w-full text-emerald-600 hover:text-emerald-700 text-sm font-medium py-1 underline underline-offset-2 transition-colors"
+                  >
+                    View Dashboard
+                  </button>
+                )}
+              </>
             )}
           </div>
           <div className="flex-1 overflow-auto">

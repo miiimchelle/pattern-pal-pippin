@@ -171,11 +171,6 @@ export function usePluginMessages() {
       if (!msg) return;
 
       switch (msg.type) {
-        // #region agent log
-        case 'debug-log':
-          fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(msg.payload)}).catch(()=>{});
-          break;
-        // #endregion
         case 'scan-results':
           setResults(msg.payload);
           setIsScanning(false);
@@ -212,9 +207,6 @@ export function usePluginMessages() {
   }, [postMessage]);
 
   const scan = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePluginMessages.ts:scan',message:'Run Check clicked - sending scan message (not run-check)',data:{messageType:'scan'},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     setError(null);
     setIsScanning(true);
     setScanProgress(null);

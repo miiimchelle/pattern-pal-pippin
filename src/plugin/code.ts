@@ -175,22 +175,6 @@ function extractFileKey(url: string): string | null {
 
 // ==================== PRIMARY BUTTON CHECK ====================
 
-// #region agent log
-function debugLog(
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-  hypothesisId: string
-): void {
-  console.log(
-    JSON.stringify({
-      type: 'debug-log',
-      payload: { location, message, data, hypothesisId, timestamp: Date.now() },
-    })
-  )
-}
-// #endregion
-
 function isButtonComponentName(name: string): boolean {
   const lower = name.toLowerCase()
   const hasButton = lower.includes('button') || lower.includes('btn')
@@ -215,21 +199,6 @@ function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
     const id = (node as GeometryMixin).fillStyleId
     if (typeof id === 'string' && id !== '') {
       const style = figma.getStyleById(id)
-      // #region agent log
-      debugLog(
-        'code.ts:hasPrimaryFillStyle',
-        'Fill style found',
-        {
-          nodeName: node.name,
-          nodeType: node.type,
-          parentName,
-          styleId: id,
-          styleName: style?.name ?? '(not resolved)',
-          isPrimary: style ? style.name.toLowerCase().includes('primary') : false,
-        },
-        'F'
-      )
-      // #endregion
       if (style && style.name.toLowerCase().includes('primary')) {
         return true
       }
@@ -245,25 +214,6 @@ function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
 
 function isPrimaryButton(node: InstanceNode): boolean {
   const props = node.variantProperties as Record<string, string> | undefined
-  const variantEntries = props ? Object.entries(props) : []
-  const hierarchyEntries = variantEntries.filter(([k]) =>
-    HIERARCHY_VARIANT_KEYS.has(k.toLowerCase())
-  )
-
-  // #region agent log
-  debugLog(
-    'code.ts:isPrimaryButton',
-    'Checking button',
-    {
-      nodeName: node.name,
-      nodeId: node.id,
-      allVariants: variantEntries.map(([k, v]) => `${k}=${v}`),
-      hierarchyVariants: hierarchyEntries.map(([k, v]) => `${k}=${v}`),
-    },
-    'D'
-  )
-  // #endregion
-
   if (props && Object.keys(props).length > 0) {
     for (const key of Object.keys(props)) {
       if (!HIERARCHY_VARIANT_KEYS.has(key.toLowerCase())) continue

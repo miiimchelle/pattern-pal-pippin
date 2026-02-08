@@ -247,29 +247,30 @@ function App() {
               <ViolationsHeader count={findingsCount} />
             )}
 
-            {/* Primary CTA — Run Check */}
-            <button
-              onClick={scan}
-              disabled={isScanning || !selectedFrame}
-              className="pattern-pal-btn"
-              title="Scan selected frame and compare to team files and design library"
-            >
-              {isScanning && !scanProgress ? 'Checking...' : 'Run Check'}
-            </button>
+            {/* Primary + Secondary CTAs — inline */}
+            <div className="flex gap-2">
+              <button
+                onClick={scan}
+                disabled={isScanning || !selectedFrame}
+                className="pattern-pal-btn"
+                title="Scan selected frame and compare to team files and design library"
+              >
+                {isScanning && !scanProgress ? 'Checking...' : 'Run Check'}
+              </button>
+
+              {settings.teamId && settings.token && (
+                <button
+                  onClick={scanTeam}
+                  disabled={isScanning}
+                  className="pattern-pal-btn-secondary"
+                >
+                  {isScanning && scanProgress ? 'Scanning Team...' : 'Scan Team Files'}
+                </button>
+              )}
+            </div>
 
             {!selectedFrame && (
-              <p className="text-xs text-gray-500 -mt-3">Select a frame to scan.</p>
-            )}
-
-            {/* Secondary actions */}
-            {settings.teamId && settings.token && (
-              <button
-                onClick={scanTeam}
-                disabled={isScanning}
-                className="pattern-pal-btn-secondary"
-              >
-                {isScanning && scanProgress ? 'Scanning Team...' : 'Scan Team Files'}
-              </button>
+              <p className="text-xs text-gray-500 -mt-1">Select a frame to scan.</p>
             )}
 
             {/* Scan progress */}

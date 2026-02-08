@@ -229,8 +229,7 @@
   color: #fafafa;
   border: none;
   cursor: pointer;
-  width: 100%;
-  margin-bottom: 16px;
+  flex: 1;
 }
 
 .pattern-pal-btn:hover {
@@ -264,7 +263,7 @@
   color: #09090b;
   border: 1px solid #e4e4e7;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
 }
 
 .pattern-pal-btn-secondary:hover {

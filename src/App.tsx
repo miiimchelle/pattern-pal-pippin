@@ -115,7 +115,7 @@ function App() {
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-4 flex flex-col gap-2">
+          <div className="p-4 flex flex-col gap-4">
             <PippinWidget
               isScanning={isScanning}
               scanProgress={scanProgress}

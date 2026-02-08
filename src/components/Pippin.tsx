@@ -136,16 +136,16 @@ export function Pippin({ status, overallConsistency }: Props) {
   );
 
   return (
-    <div className="flex flex-col items-center" style={{ gap: 0 }}>
-      {/* Speech bubble — above the sprite, overlapping slightly */}
+    <div className="flex flex-row items-center justify-center gap-2">
+      {/* Sprite */}
+      <div className="animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
+
+      {/* Speech bubble — to the right of the sprite */}
       <div className="relative z-10 bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-700 leading-snug text-center max-w-[260px]">
         {mood.line}
-        {/* Tail pointing down */}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-0 h-0 border-x-[5px] border-x-transparent border-t-[6px] border-t-gray-100" />
+        {/* Tail pointing left */}
+        <div className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-gray-100" />
       </div>
-
-      {/* Sprite — centred, pulled up so bubble overlaps the top */}
-      <div className="animate-float -mt-3" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Pattern Pal
 
-A Figma plugin that checks your designs against your design system and team files. Built for the **Into Design Systems Hackathon 2026** by Team Denkwerk.
+A Figma plugin that checks your designs against your design system and team files. Built for the **Into Design Systems Hackathon 2026** by Team Pippin.
 
 ## What it is
 

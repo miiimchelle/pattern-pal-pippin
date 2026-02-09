@@ -81,9 +81,12 @@ export interface TeamFileResult {
 }
 
 export interface RuleIssue {
+  ruleId: string;
+  ruleName: string;
+  severity: 'error' | 'warning' | 'info';
   frameId: string;
   frameName: string;
-  primaryButtonIds: string[];
+  nodeIds: string[];
   message: string;
 }
 
@@ -92,74 +95,29 @@ export interface SelectedFrameScanResult {
   teamFileResults: TeamFileResult[];
   libraryMatches: LibraryMatch[];
   overallConsistency: number;
-  buttonIssues: RuleIssue[];
+  ruleIssues: RuleIssue[];
 }
 
 export interface PluginSettings {
   token: string;
   libraryUrls: string[];
   teamId: string;
-  dashboardUrl: string;
-}
-
-// ---- Contribution push ----
-
-export interface ContributionPayload {
-  teamId: string;
-  timestamp: string;
-  patternCount: number;
-  patterns: Array<{
-    fingerprint: string;
-    frameCount: number;
-    consistency: number;
-    componentNames: string[];
-    libraryMatchCount: number;
-  }>;
-  componentUsageSummary: Record<string, number>;
-}
-
-export type PushStatus = 'idle' | 'pushing' | 'success' | 'error';
-
-export function buildContributionPayload(
-  results: PatternGroup[],
-  teamId: string,
-): ContributionPayload {
-  const componentUsageSummary: Record<string, number> = {};
-
-  const patterns = results.map((g) => {
-    // Aggregate component names from componentUsage
-    for (const comp of g.componentUsage) {
-      componentUsageSummary[comp.name] = (componentUsageSummary[comp.name] ?? 0) + 1;
-    }
-    return {
-      fingerprint: g.fingerprint,
-      frameCount: g.frames.length,
-      consistency: g.consistency,
-      componentNames: g.componentUsage.map((c) => c.name),
-      libraryMatchCount: g.libraryMatches.length,
-    };
-  });
-
-  return {
-    teamId,
-    timestamp: new Date().toISOString(),
-    patternCount: results.length,
-    patterns,
-    componentUsageSummary,
-  };
 }
 
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
     useState<SelectedFrameScanResult | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+  const [isScanningFrame, setIsScanningFrame] = useState(false);
+  const [isScanningTeam, setIsScanningTeam] = useState(false);
+  const [frameScanProgress, setFrameScanProgress] = useState<ScanProgress | null>(null);
+  const [teamScanProgress, setTeamScanProgress] = useState<ScanProgress | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<FrameDetail | null>(null);
-  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '', dashboardUrl: '' });
+  const [settings, setSettings] = useState<PluginSettings>({ token: '', libraryUrls: [], teamId: '' });
   const [showSettings, setShowSettings] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pushStatus, setPushStatus] = useState<PushStatus>('idle');
+  const [frameError, setFrameError] = useState<string | null>(null);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [activeScanType, setActiveScanType] = useState<'frame' | 'team' | null>(null);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -171,23 +129,22 @@ export function usePluginMessages() {
       if (!msg) return;
 
       switch (msg.type) {
-        // #region agent log
-        case 'debug-log':
-          fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(msg.payload)}).catch(()=>{});
-          break;
-        // #endregion
         case 'scan-results':
           setResults(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          setIsScanningTeam(false);
+          setTeamScanProgress(null);
           break;
         case 'scan-file-results':
           setSelectedFrameScanResult(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          setIsScanningFrame(false);
+          setFrameScanProgress(null);
           break;
         case 'scan-progress':
-          setScanProgress(msg.payload);
+          if (activeScanType === 'frame') {
+            setFrameScanProgress(msg.payload);
+          } else {
+            setTeamScanProgress(msg.payload);
+          }
           break;
         case 'selection-change':
           setSelectedFrame(msg.payload);
@@ -199,9 +156,15 @@ export function usePluginMessages() {
           setSettings(msg.payload);
           break;
         case 'error':
-          setError(msg.payload);
-          setIsScanning(false);
-          setScanProgress(null);
+          if (activeScanType === 'frame') {
+            setFrameError(msg.payload);
+            setIsScanningFrame(false);
+            setFrameScanProgress(null);
+          } else {
+            setTeamError(msg.payload);
+            setIsScanningTeam(false);
+            setTeamScanProgress(null);
+          }
           break;
       }
     };
@@ -209,22 +172,21 @@ export function usePluginMessages() {
     window.addEventListener('message', handler);
     postMessage('load-settings');
     return () => window.removeEventListener('message', handler);
-  }, [postMessage]);
+  }, [postMessage, activeScanType]);
 
   const scan = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/cb406682-4d9e-4897-950e-32dd1da7d18e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePluginMessages.ts:scan',message:'Run Check clicked - sending scan message (not run-check)',data:{messageType:'scan'},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    setError(null);
-    setIsScanning(true);
-    setScanProgress(null);
+    setFrameError(null);
+    setIsScanningFrame(true);
+    setFrameScanProgress(null);
+    setActiveScanType('frame');
     postMessage('scan', settings);
   }, [postMessage, settings]);
 
   const scanTeam = useCallback(() => {
-    setError(null);
-    setIsScanning(true);
-    setScanProgress(null);
+    setTeamError(null);
+    setIsScanningTeam(true);
+    setTeamScanProgress(null);
+    setActiveScanType('team');
     postMessage('scan-team', settings);
   }, [postMessage, settings]);
 
@@ -250,22 +212,14 @@ export function usePluginMessages() {
   );
 
   const saveSettings = useCallback(
-    (token: string, libraryUrls: string[], teamId: string, dashboardUrl: string) => {
-      const newSettings = { token, libraryUrls, teamId, dashboardUrl };
+    (token: string, libraryUrls: string[], teamId: string) => {
+      const newSettings = { token, libraryUrls, teamId };
       setSettings(newSettings);
       postMessage('save-settings', newSettings);
       setShowSettings(false);
     },
     [postMessage],
   );
-
-  const pushToDashboard = useCallback(() => {
-    setPushStatus('pushing');
-    setTimeout(() => {
-      setPushStatus('success');
-      setTimeout(() => setPushStatus('idle'), 3000);
-    }, 2000);
-  }, []);
 
   const close = useCallback(() => {
     postMessage('close');
@@ -274,21 +228,22 @@ export function usePluginMessages() {
   return {
     results,
     selectedFrameScanResult,
-    isScanning,
-    scanProgress,
+    isScanningFrame,
+    isScanningTeam,
+    frameScanProgress,
+    teamScanProgress,
     selectedFrame,
     settings,
     showSettings,
     setShowSettings,
-    error,
-    pushStatus,
+    frameError,
+    teamError,
     scan,
     scanTeam,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
-    pushToDashboard,
     close,
   };
 }

@@ -22,12 +22,12 @@ import {
 // Row 2 (3 items): party-hat, excited, candle
 //
 // We scale the full image so each cell height = 120px (fills the box).
-// Native cell height = 874/3 ≈ 291.  Scale = 120/291 ≈ 0.412
-// background-size: 1490*0.412 ≈ 614px,  874*0.412 = 360px
-const IMG_W = 614;
-const IMG_H = 360;
-const CELL_W = IMG_W / 4; // ~153.5
-const CELL_H = IMG_H / 3; // 120
+// Native cell height = 874/3 ≈ 291.  Scale = 80/291 ≈ 0.275
+// background-size: 1490*0.275 ≈ 410px,  874*0.275 = 240px
+const IMG_W = 410;
+const IMG_H = 240;
+const CELL_W = IMG_W / 4; // ~102.5
+const CELL_H = IMG_H / 3; // 80
 
 type SpritePos = [row: number, col: number];
 
@@ -45,7 +45,7 @@ const SPRITE: Record<string, SpritePos> = {
 };
 
 // Display size for the visible container (square, centred on sprite)
-const DISPLAY_SIZE = 120;
+const DISPLAY_SIZE = 80;
 
 function spriteStyle(key: string): React.CSSProperties {
   const [row, col] = SPRITE[key] ?? SPRITE.idle;
@@ -121,6 +121,21 @@ function resolveMood(status: PippinStatus, consistency: number | null): MoodResu
   }
 }
 
+// ---- Health helpers ----
+
+function healthStatusLabel(c: number): string {
+  if (c >= 85) return 'Excellent';
+  if (c >= 70) return 'Good';
+  if (c >= 55) return 'Fair';
+  return 'Needs improvement';
+}
+
+function healthColorClass(c: number): string {
+  if (c >= 70) return 'text-[#00a63e]';
+  if (c >= 55) return 'text-[#d97706]';
+  return 'text-[#dc2626]';
+}
+
 // ---- Component ----
 interface Props {
   status: PippinStatus;
@@ -131,23 +146,33 @@ export function Pippin({ status, overallConsistency }: Props) {
   // Re-pick on status/consistency change (useMemo key is the pair).
   const mood = useMemo(
     () => resolveMood(status, overallConsistency),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [status, overallConsistency],
   );
 
   return (
-    <div className="flex flex-row items-center justify-center gap-2">
+    <div className="flex flex-row items-center justify-center gap-2 my-2">
       {/* Sprite — Pippin (tamagotchi class from global.css) */}
       <div className="tamagotchi pattern-pal-sprite animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
 
       {/* Speech bubble — to the right of the sprite */}
       <div
-        className="relative z-10 bg-white rounded-xl px-4 py-2.5 text-left text-sm text-[#374151] leading-snug max-w-[260px]"
+        className="relative z-10 bg-white rounded-xl px-3 py-1.5 text-left text-xs text-[#374151] leading-snug max-w-[220px]"
         style={{
           boxShadow: '0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
         {mood.line}
+        {overallConsistency != null && (
+          <div className="mt-1 pt-1 border-t border-gray-100">
+            <span className="text-[10px] text-gray-400">Overall Health </span>
+            <span className={`text-sm font-bold ${healthColorClass(overallConsistency)}`}>
+              {overallConsistency}%
+            </span>
+            <span className={`text-[10px] font-semibold ml-1 ${healthColorClass(overallConsistency)}`}>
+              {healthStatusLabel(overallConsistency)}
+            </span>
+          </div>
+        )}
         {/* Diamond beak on the left, pointing toward the sprite */}
         <div
           className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-2.5 h-3 bg-white"

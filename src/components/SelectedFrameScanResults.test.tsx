@@ -24,19 +24,22 @@ function makeResult(overrides: Partial<SelectedFrameScanResult> = {}): SelectedF
     teamFileResults: [],
     libraryMatches: [],
     overallConsistency: 80,
-    buttonIssues: [],
+    ruleIssues: [],
     ...overrides,
   };
 }
 
 describe('SelectedFrameScanResults', () => {
-  it('renders button issue violation cards', () => {
+  it('renders rule issue violation cards', () => {
     const result = makeResult({
-      buttonIssues: [
+      ruleIssues: [
         {
+          ruleId: 'primary-button-limit',
+          ruleName: 'Primary Button Limit',
+          severity: 'error' as const,
           frameId: 'frame-1',
           frameName: 'Login Screen',
-          primaryButtonIds: ['btn-1', 'btn-2'],
+          nodeIds: ['btn-1', 'btn-2'],
           message: "Container 'Login Screen' has 2 Primary Buttons — only one is allowed per screen.",
         },
       ],
@@ -44,17 +47,17 @@ describe('SelectedFrameScanResults', () => {
 
     render(<SelectedFrameScanResults result={result} onOpenInFigma={() => {}} />);
 
-    expect(screen.getByText('Button rules')).toBeTruthy();
+    expect(screen.getByText('Rule violations')).toBeTruthy();
     expect(screen.getByText('Login Screen')).toBeTruthy();
-    expect(screen.getByText('2 primary')).toBeTruthy();
+    expect(screen.getByText('Primary Button Limit')).toBeTruthy();
     expect(screen.getByText(/has 2 Primary Buttons/)).toBeTruthy();
   });
 
   it('shows correct count badge', () => {
     const result = makeResult({
-      buttonIssues: [
-        { frameId: 'f1', frameName: 'A', primaryButtonIds: ['b1', 'b2'], message: 'msg1' },
-        { frameId: 'f2', frameName: 'B', primaryButtonIds: ['b3', 'b4', 'b5'], message: 'msg2' },
+      ruleIssues: [
+        { ruleId: 'primary-button-limit', ruleName: 'Primary Button Limit', severity: 'error' as const, frameId: 'f1', frameName: 'A', nodeIds: ['b1', 'b2'], message: 'msg1' },
+        { ruleId: 'primary-button-limit', ruleName: 'Primary Button Limit', severity: 'error' as const, frameId: 'f2', frameName: 'B', nodeIds: ['b3', 'b4', 'b5'], message: 'msg2' },
       ],
     });
 
@@ -63,11 +66,11 @@ describe('SelectedFrameScanResults', () => {
     expect(countBadge?.textContent).toBe('2');
   });
 
-  it('calls onZoomToFrame when clicking a button issue card', () => {
+  it('calls onZoomToFrame when clicking a rule issue card', () => {
     const zoomFn = vi.fn();
     const result = makeResult({
-      buttonIssues: [
-        { frameId: 'frame-42', frameName: 'Checkout', primaryButtonIds: ['b1', 'b2'], message: 'msg' },
+      ruleIssues: [
+        { ruleId: 'primary-button-limit', ruleName: 'Primary Button Limit', severity: 'error' as const, frameId: 'frame-42', frameName: 'Checkout', nodeIds: ['b1', 'b2'], message: 'msg' },
       ],
     });
 
@@ -84,10 +87,10 @@ describe('SelectedFrameScanResults', () => {
     expect(screen.getByText('No violations found')).toBeTruthy();
   });
 
-  it('hides empty state when button issues exist', () => {
+  it('hides empty state when rule issues exist', () => {
     const result = makeResult({
-      buttonIssues: [
-        { frameId: 'f1', frameName: 'X', primaryButtonIds: ['b1', 'b2'], message: 'msg' },
+      ruleIssues: [
+        { ruleId: 'primary-button-limit', ruleName: 'Primary Button Limit', severity: 'error' as const, frameId: 'f1', frameName: 'X', nodeIds: ['b1', 'b2'], message: 'msg' },
       ],
     });
 

@@ -14,9 +14,9 @@ describe('App', () => {
     expect(screen.getByTitle('Settings')).toBeInTheDocument()
   })
 
-  it('shows Run Check button', () => {
+  it('shows Scan button on frame tab', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: /Run Check/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Scan$/i })).toBeInTheDocument()
   })
 
   it('shows select frame hint when no frame selected', () => {
@@ -24,9 +24,21 @@ describe('App', () => {
     expect(screen.getByText(/Select a frame to scan\./)).toBeInTheDocument()
   })
 
-  it('shows token reminder when no token configured', () => {
+  it('does not show token reminder on frame tab', () => {
     render(<App />)
+    expect(screen.queryByText(/Add your Figma token/i)).not.toBeInTheDocument()
+  })
+
+  it('shows token reminder on team tab when no token configured', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByText('Scan team files'))
     expect(screen.getByText(/Add your Figma token/i)).toBeInTheDocument()
+  })
+
+  it('disables Scan button on team tab when token/teamId missing', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByText('Scan team files'))
+    expect(screen.getByRole('button', { name: /^Scan$/i })).toBeDisabled()
   })
 
   it('switches to Settings when gear is clicked', async () => {
@@ -37,8 +49,9 @@ describe('App', () => {
     expect(screen.getByText(/Save Settings/i)).toBeInTheDocument()
   })
 
-  it('does not show Scan Team Files button without token and teamId', () => {
+  it('renders both tab buttons', () => {
     render(<App />)
-    expect(screen.queryByRole('button', { name: /Scan Team Files/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Scan frame')).toBeInTheDocument()
+    expect(screen.getByText('Scan team files')).toBeInTheDocument()
   })
 })

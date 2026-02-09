@@ -15,12 +15,19 @@ import {
   AT_NIGHT_LINES,
 } from './pippinCopy';
 
-/** Get the speech bubble text from the rendered Pippin */
+/** Get the mood line text from the rendered Pippin speech bubble */
 function getSpeechText(container: HTMLElement): string {
-  // The speech bubble is the second child div (after the sprite)
+  // The speech bubble is the .relative div; the mood line is its first text node
   const bubble = container.querySelector('.relative');
-  // Text content minus the tail div's text (which is empty anyway)
-  return bubble?.textContent?.trim() ?? '';
+  if (!bubble) return '';
+  // Get only direct text nodes (the mood line), skipping child elements (health info, beak)
+  let text = '';
+  for (const node of bubble.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent;
+    }
+  }
+  return text.trim();
 }
 
 describe('Pippin', () => {

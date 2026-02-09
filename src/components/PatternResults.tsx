@@ -18,7 +18,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
   if (groups.length === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">&check;</div>
+        <div className="empty-state-icon"></div>
         <div className="empty-state-title">No patterns found</div>
         <div className="empty-state-description">Try a page with more frames.</div>
       </div>

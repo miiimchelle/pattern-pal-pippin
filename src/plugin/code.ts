@@ -1,126 +1,49 @@
 declare const __html__: string
 
-// ==================== TYPES ====================
+import {
+  type FrameFingerprint,
+  type LibraryComponent,
+  type LibraryComponentFingerprint,
+  type LibraryMatch,
+  type PatternGroup,
+  type ApiNode,
+  type PluginSettings,
+  type FigmaFileData,
+  type RuleIssue,
+  type SelectedFrameScanResult,
+  type TeamFileResult,
+  type TeamFrameMatch,
+  type FrameDetail,
+  rgbToHex,
+  fuzzyMatch,
+  extractFileKey,
+  isButtonComponentName,
+  HIERARCHY_VARIANT_KEYS,
+  computeStructuralSimilarity,
+  computeSimilarity,
+  findLibraryMatches,
+  clusterFrames,
+  getApiNodeDepth,
+  buildApiFingerprint,
+  extractComponentNodes,
+  extractFrameFingerprints,
+} from './core'
 
-interface FrameFingerprint {
-  id: string
-  name: string
-  width: number
-  height: number
-  childCount: number
-  maxDepth: number
-  componentIds: string[]
-  componentNames: string[]
-  aspectRatio: number
-  layoutMode: string
-  cornerRadius: number
-  hasAutoLayout: boolean
-  fillCount: number
-  childTypeDistribution: Record<string, number>
-  fileKey?: string
-  fileName?: string
-}
-
-interface LibraryComponent {
-  id: string
-  name: string
-  description: string
-  fileKey: string
-  fileName: string
-  fileUrl: string
-}
-
-// Structural fingerprint for a library component (from REST API)
-interface LibraryComponentFingerprint {
-  id: string
-  name: string
-  description: string
-  fileKey: string
-  fileName: string
-  fileUrl: string
-  width: number
-  height: number
-  childCount: number
-  maxDepth: number
-  aspectRatio: number
-  layoutMode: string
-  cornerRadius: number
-  fillCount: number
-  childTypeDistribution: Record<string, number>
-}
-
-// A structural match between a local frame and a library component
-interface LibraryMatch {
-  componentId: string
-  componentName: string
-  similarity: number // 0-100
-  fileKey: string
-  fileUrl: string
-}
-
-interface PatternGroup {
-  fingerprint: string
-  frames: FrameFingerprint[]
-  consistency: number // 0-100 percentage
-  componentUsage: LibraryComponent[]
-  nameMatches: LibraryComponent[]
-  libraryMatches: LibraryMatch[] // structural matches against library
-}
-
-interface FrameDetail {
-  id: string
-  name: string
-  width: number
-  height: number
-  cornerRadius: number | number[]
-  padding: { top: number; right: number; bottom: number; left: number } | null
-  gap: number | null
-  layoutMode: string | null
-  childLayers: { name: string; type: string }[]
-  fills: string[]
-  depth: number
-}
-
-interface TeamFrameMatch {
-  teamFrameId: string
-  teamFrameName: string
-  localFrameId: string
-  localFrameName: string
-  similarity: number
-}
-
-interface TeamFileResult {
-  fileKey: string
-  fileName: string
-  consistency: number
-  matches: TeamFrameMatch[]
-}
-
-interface SelectedFrameScanResult {
-  selectedFrame: FrameFingerprint
-  teamFileResults: TeamFileResult[]
-  libraryMatches: LibraryMatch[]
-  overallConsistency: number
-  buttonIssues: RuleIssue[]
-}
-
-interface PluginSettings {
-  token: string
-  libraryUrls: string[]
-  teamId: string
-}
-
-interface FigmaFileData {
-  name: string
-  components: LibraryComponent[]
-  fingerprints: LibraryComponentFingerprint[]
-}
-
-interface RuleIssue {
-  frameId: string
-  frameName: string
-  primaryButtonIds: string[]
-  message: string
+// Re-export types used by other parts of the codebase
+export type {
+  FrameFingerprint,
+  LibraryComponent,
+  LibraryComponentFingerprint,
+  LibraryMatch,
+  PatternGroup,
+  ApiNode,
+  PluginSettings,
+  FigmaFileData,
+  RuleIssue,
+  SelectedFrameScanResult,
+  TeamFileResult,
+  TeamFrameMatch,
+  FrameDetail,
 }
 
 // ==================== STORAGE ====================
@@ -136,100 +59,13 @@ function getMaxDepth(node: SceneNode, current = 0): number {
   return Math.max(...node.children.map((child) => getMaxDepth(child, current + 1)))
 }
 
-function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (v: number) =>
-    Math.round(v * 255)
-      .toString(16)
-      .padStart(2, '0')
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
-
-// Simple fuzzy match - returns score 0-1
-function fuzzyMatch(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const s2 = str2.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  if (s1 === s2) return 1
-  if (s1.includes(s2) || s2.includes(s1)) return 0.8
-
-  const words1 = str1
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2)
-  const words2 = str2
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2)
-
-  if (words1.length === 0 || words2.length === 0) return 0
-
-  const matches = words1.filter((w1) => words2.some((w2) => w1.includes(w2) || w2.includes(w1)))
-  return (matches.length / Math.max(words1.length, words2.length)) * 0.6
-}
-
-// Extract file key from Figma URL
-function extractFileKey(url: string): string | null {
-  const match = url.match(/figma\.com\/(file|design)\/([a-zA-Z0-9]+)/)
-  return match ? match[2] : null
-}
-
 // ==================== PRIMARY BUTTON CHECK ====================
 
-// #region agent log
-function debugLog(
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-  hypothesisId: string
-): void {
-  console.log(
-    JSON.stringify({
-      type: 'debug-log',
-      payload: { location, message, data, hypothesisId, timestamp: Date.now() },
-    })
-  )
-}
-// #endregion
-
-function isButtonComponentName(name: string): boolean {
-  const lower = name.toLowerCase()
-  const hasButton = lower.includes('button') || lower.includes('btn')
-  const hasCta = lower === 'cta' || lower.includes('/cta')
-  return hasButton || hasCta
-}
-
-const HIERARCHY_VARIANT_KEYS = new Set([
-  'type',
-  'variant',
-  'hierarchy',
-  'kind',
-  'style',
-  'emphasis',
-  'priority',
-  'appearance',
-  'level',
-])
-
-function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
+function hasPrimaryFillStyle(node: SceneNode): boolean {
   if ('fillStyleId' in node) {
     const id = (node as GeometryMixin).fillStyleId
     if (typeof id === 'string' && id !== '') {
       const style = figma.getStyleById(id)
-      // #region agent log
-      debugLog(
-        'code.ts:hasPrimaryFillStyle',
-        'Fill style found',
-        {
-          nodeName: node.name,
-          nodeType: node.type,
-          parentName,
-          styleId: id,
-          styleName: style?.name ?? '(not resolved)',
-          isPrimary: style ? style.name.toLowerCase().includes('primary') : false,
-        },
-        'F'
-      )
-      // #endregion
       if (style && style.name.toLowerCase().includes('primary')) {
         return true
       }
@@ -237,7 +73,7 @@ function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
   }
   if ('children' in node) {
     for (const child of (node as ChildrenMixin).children) {
-      if (hasPrimaryFillStyle(child, node.name)) return true
+      if (hasPrimaryFillStyle(child)) return true
     }
   }
   return false
@@ -245,38 +81,11 @@ function hasPrimaryFillStyle(node: SceneNode, parentName?: string): boolean {
 
 function isPrimaryButton(node: InstanceNode): boolean {
   const props = node.variantProperties as Record<string, string> | undefined
-  const variantEntries = props ? Object.entries(props) : []
-  const hierarchyEntries = variantEntries.filter(([k]) =>
-    HIERARCHY_VARIANT_KEYS.has(k.toLowerCase())
-  )
-
-  // #region agent log
-  debugLog(
-    'code.ts:isPrimaryButton',
-    'Checking button',
-    {
-      nodeName: node.name,
-      nodeId: node.id,
-      allVariants: variantEntries.map(([k, v]) => `${k}=${v}`),
-      hierarchyVariants: hierarchyEntries.map(([k, v]) => `${k}=${v}`),
-    },
-    'D'
-  )
-  // #endregion
-
   if (props && Object.keys(props).length > 0) {
     for (const key of Object.keys(props)) {
       if (!HIERARCHY_VARIANT_KEYS.has(key.toLowerCase())) continue
       const val = props[key]
       if (typeof val === 'string' && val.toLowerCase() === 'primary') {
-        // #region agent log
-        debugLog(
-          'code.ts:isPrimaryButton',
-          'Matched via variant',
-          { nodeName: node.name, matchedKey: key, matchedVal: val },
-          'D'
-        )
-        // #endregion
         return true
       }
     }
@@ -284,9 +93,6 @@ function isPrimaryButton(node: InstanceNode): boolean {
   }
 
   const fillMatch = hasPrimaryFillStyle(node)
-  // #region agent log
-  debugLog('code.ts:isPrimaryButton', 'Fill style check', { nodeName: node.name, fillMatch }, 'F')
-  // #endregion
   if (fillMatch) {
     return true
   }
@@ -298,14 +104,6 @@ function isPrimaryButton(node: InstanceNode): boolean {
       !name.includes('secondary') &&
       !name.includes('outline') &&
       !name.includes('ghost'))
-  // #region agent log
-  debugLog(
-    'code.ts:isPrimaryButton',
-    'Name fallback check',
-    { nodeName: node.name, nameMatch },
-    'D'
-  )
-  // #endregion
   return nameMatch
 }
 
@@ -320,14 +118,6 @@ async function findButtonInstances(node: SceneNode, namesSeen: string[]): Promis
     if (componentName !== '(no main component)') namesSeen.push(componentName)
 
     const nameMatches = isButtonComponentName(componentName) || isButtonComponentName(instanceName)
-    // #region agent log
-    debugLog(
-      'code.ts:findButtonInstances',
-      'Instance node found',
-      { instanceName, componentName, nameMatches, nodeType: node.type },
-      'B,C'
-    )
-    // #endregion
     if (nameMatches) instances.push(node)
   }
 
@@ -343,60 +133,25 @@ async function findButtonInstances(node: SceneNode, namesSeen: string[]): Promis
 
 async function checkPrimaryButtonPerFrame(): Promise<{
   issues: RuleIssue[]
-  debug: {
-    frameCount: number
-    frameNames: string[]
-    buttonCount: number
-    pageChildTypes: string[]
-    instanceNamesSeen: string[]
-  }
 }> {
   const issues: RuleIssue[] = []
   const frames = figma.currentPage.children.filter(
     (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
   )
-  const pageChildTypes = figma.currentPage.children.map((c) => ({
-    type: c.type,
-    name: c.name,
-  }))
-  const pageChildTypesSummary = pageChildTypes.map((p) => `${p.type}:${p.name}`).slice(0, 8)
-
   const instanceNamesSeen: string[] = []
-  let totalButtons = 0
 
-  // #region agent log
-  debugLog(
-    'code.ts:checkPrimaryButtonPerFrame',
-    'Check started',
-    { containerCount: frames.length, containerNames: frames.slice(0, 10).map((f) => f.name) },
-    'B'
-  )
-  // #endregion
   for (const frame of frames) {
     const allButtonInstances = await findButtonInstances(frame, instanceNamesSeen)
-    totalButtons += allButtonInstances.length
     const primaryButtons = allButtonInstances.filter(isPrimaryButton)
-    // #region agent log
-    debugLog(
-      'code.ts:checkPrimaryButtonPerFrame:loop',
-      'Container checked',
-      {
-        frameName: frame.name,
-        frameType: frame.type,
-        totalButtonsInFrame: allButtonInstances.length,
-        primaryButtonCount: primaryButtons.length,
-        buttonNames: allButtonInstances.map((b) => b.name),
-        primaryNames: primaryButtons.map((b) => b.name),
-      },
-      'B,D,E'
-    )
-    // #endregion
 
     if (primaryButtons.length > 1) {
       issues.push({
+        ruleId: 'primary-button-limit',
+        ruleName: 'Primary Button Limit',
+        severity: 'error',
         frameId: frame.id,
         frameName: frame.name,
-        primaryButtonIds: primaryButtons.map((btn) => btn.id),
+        nodeIds: primaryButtons.map((btn) => btn.id),
         message: `Container '${frame.name}' has ${primaryButtons.length} Primary Buttons — only one is allowed per screen.`,
       })
     }
@@ -404,13 +159,6 @@ async function checkPrimaryButtonPerFrame(): Promise<{
 
   return {
     issues,
-    debug: {
-      frameCount: frames.length,
-      frameNames: frames.map((f) => f.name),
-      buttonCount: totalButtons,
-      pageChildTypes: pageChildTypesSummary,
-      instanceNamesSeen: [...new Set(instanceNamesSeen)],
-    },
   }
 }
 
@@ -489,185 +237,6 @@ function fingerprint(frame: FrameNode): FrameFingerprint {
   }
 }
 
-// ==================== SIMILARITY SCORING ====================
-
-// Common structural shape shared by both FrameFingerprint and LibraryComponentFingerprint
-interface StructuralShape {
-  width: number
-  height: number
-  childCount: number
-  maxDepth: number
-  aspectRatio: number
-  layoutMode: string
-  cornerRadius: number
-  fillCount: number
-  childTypeDistribution: Record<string, number>
-  componentIds?: string[]
-}
-
-function computeStructuralSimilarity(a: StructuralShape, b: StructuralShape): number {
-  let score = 0
-  let totalWeight = 0
-
-  // Dimension similarity (weight 2)
-  const dimW = 1 - Math.abs(a.width - b.width) / Math.max(a.width, b.width, 1)
-  const dimH = 1 - Math.abs(a.height - b.height) / Math.max(a.height, b.height, 1)
-  score += ((dimW + dimH) / 2) * 2
-  totalWeight += 2
-
-  // Aspect ratio similarity (weight 1)
-  const arSim =
-    1 - Math.abs(a.aspectRatio - b.aspectRatio) / Math.max(a.aspectRatio, b.aspectRatio, 0.01)
-  score += arSim * 1
-  totalWeight += 1
-
-  // Child count similarity (weight 2)
-  const ccSim = 1 - Math.abs(a.childCount - b.childCount) / Math.max(a.childCount, b.childCount, 1)
-  score += ccSim * 2
-  totalWeight += 2
-
-  // Tree depth similarity (weight 2)
-  const depthSim = 1 - Math.abs(a.maxDepth - b.maxDepth) / Math.max(a.maxDepth, b.maxDepth, 1)
-  score += depthSim * 2
-  totalWeight += 2
-
-  // Layout mode match (weight 1.5)
-  score += (a.layoutMode === b.layoutMode ? 1 : 0) * 1.5
-  totalWeight += 1.5
-
-  // Corner radius similarity (weight 1)
-  const maxCr = Math.max(a.cornerRadius, b.cornerRadius, 1)
-  score += (1 - Math.abs(a.cornerRadius - b.cornerRadius) / maxCr) * 1
-  totalWeight += 1
-
-  // Component ID overlap — Jaccard similarity (weight 3, only if both have componentIds)
-  const idsA = a.componentIds || []
-  const idsB = b.componentIds || []
-  if (idsA.length > 0 || idsB.length > 0) {
-    const setA = new Set(idsA)
-    const setB = new Set(idsB)
-    const union = new Set([...setA, ...setB])
-    if (union.size > 0) {
-      const intersection = [...setA].filter((x) => setB.has(x)).length
-      score += (intersection / union.size) * 3
-    }
-  }
-  totalWeight += 3
-
-  // Child type distribution similarity (weight 2)
-  const allTypes = new Set([
-    ...Object.keys(a.childTypeDistribution),
-    ...Object.keys(b.childTypeDistribution),
-  ])
-  if (allTypes.size > 0) {
-    let typeSim = 0
-    for (const t of allTypes) {
-      const countA = a.childTypeDistribution[t] || 0
-      const countB = b.childTypeDistribution[t] || 0
-      typeSim += 1 - Math.abs(countA - countB) / Math.max(countA, countB, 1)
-    }
-    score += (typeSim / allTypes.size) * 2
-  }
-  totalWeight += 2
-
-  // Fill count similarity (weight 0.5)
-  const maxFill = Math.max(a.fillCount, b.fillCount, 1)
-  score += (1 - Math.abs(a.fillCount - b.fillCount) / maxFill) * 0.5
-  totalWeight += 0.5
-
-  return Math.round((score / totalWeight) * 100)
-}
-
-// Compare two local frames
-function computeSimilarity(a: FrameFingerprint, b: FrameFingerprint): number {
-  return computeStructuralSimilarity(a, b)
-}
-
-// Compare a local frame against a library component fingerprint
-function compareFrameToLibrary(
-  frame: FrameFingerprint,
-  libFp: LibraryComponentFingerprint
-): number {
-  return computeStructuralSimilarity(frame, libFp)
-}
-
-// Find the best library matches for a set of frames (top matches above threshold)
-function findLibraryMatches(
-  frames: FrameFingerprint[],
-  libraryFingerprints: LibraryComponentFingerprint[],
-  threshold = 40,
-  maxResults = 5
-): LibraryMatch[] {
-  if (libraryFingerprints.length === 0) return []
-
-  // For each library component, compute the average similarity across all frames in the group
-  const scored: { fp: LibraryComponentFingerprint; avgSim: number }[] = []
-
-  for (const libFp of libraryFingerprints) {
-    const avgSim =
-      frames.reduce((sum, f) => sum + compareFrameToLibrary(f, libFp), 0) / frames.length
-    if (avgSim >= threshold) {
-      scored.push({ fp: libFp, avgSim })
-    }
-  }
-
-  // Sort by similarity descending, take top N
-  scored.sort((a, b) => b.avgSim - a.avgSim)
-
-  return scored.slice(0, maxResults).map((s) => ({
-    componentId: s.fp.id,
-    componentName: s.fp.name,
-    similarity: s.avgSim,
-    fileKey: s.fp.fileKey,
-    fileUrl: s.fp.fileUrl,
-  }))
-}
-
-// Cluster frames by pairwise similarity, threshold = minimum % to belong to a cluster
-function clusterFrames(
-  frames: FrameFingerprint[],
-  threshold: number
-): { frames: FrameFingerprint[]; consistency: number }[] {
-  const clusters: FrameFingerprint[][] = []
-
-  for (const frame of frames) {
-    let bestCluster: FrameFingerprint[] | null = null
-    let bestAvg = 0
-
-    for (const cluster of clusters) {
-      const avgSim =
-        cluster.reduce((sum, f) => sum + computeSimilarity(frame, f), 0) / cluster.length
-      if (avgSim >= threshold && avgSim > bestAvg) {
-        bestCluster = cluster
-        bestAvg = avgSim
-      }
-    }
-
-    if (bestCluster) {
-      bestCluster.push(frame)
-    } else {
-      clusters.push([frame])
-    }
-  }
-
-  return clusters
-    .filter((c) => c.length >= 2)
-    .map((cluster) => {
-      let totalSim = 0
-      let pairs = 0
-      for (let i = 0; i < cluster.length; i++) {
-        for (let j = i + 1; j < cluster.length; j++) {
-          totalSim += computeSimilarity(cluster[i], cluster[j])
-          pairs++
-        }
-      }
-      return {
-        frames: cluster,
-        consistency: pairs > 0 ? Math.round(totalSim / pairs) : 100,
-      }
-    })
-}
-
 function scanCurrentPage(): FrameFingerprint[] {
   const page = figma.currentPage
   const frames = page.children.filter((node): node is FrameNode => node.type === 'FRAME')
@@ -730,111 +299,6 @@ function getFrameDetail(frame: FrameNode): FrameDetail {
 }
 
 // ==================== FIGMA API ====================
-
-// REST API node shape (partial)
-interface ApiNode {
-  id?: string
-  name?: string
-  type?: string
-  description?: string
-  children?: ApiNode[]
-  absoluteBoundingBox?: { x: number; y: number; width: number; height: number }
-  layoutMode?: string
-  cornerRadius?: number
-  rectangleCornerRadii?: number[]
-  fills?: { type: string; visible?: boolean }[]
-}
-
-// Get max depth from an API node tree
-function getApiNodeDepth(node: ApiNode, current = 0): number {
-  if (!node.children || node.children.length === 0) return current
-  return Math.max(...node.children.map((c) => getApiNodeDepth(c, current + 1)))
-}
-
-// Build a structural fingerprint from a REST API node
-function buildApiFingerprint(
-  node: ApiNode,
-  fileKey: string,
-  fileName: string,
-  fileUrl: string
-): LibraryComponentFingerprint {
-  const bb = node.absoluteBoundingBox || { width: 0, height: 0 }
-  const w = Math.round(bb.width)
-  const h = Math.round(bb.height)
-  const children = node.children || []
-
-  const childTypeDist: Record<string, number> = {}
-  for (const child of children) {
-    const t = child.type || 'UNKNOWN'
-    childTypeDist[t] = (childTypeDist[t] || 0) + 1
-  }
-
-  let cr = 0
-  if (typeof node.cornerRadius === 'number') {
-    cr = node.cornerRadius
-  } else if (node.rectangleCornerRadii) {
-    cr = Math.max(...node.rectangleCornerRadii)
-  }
-
-  const visibleFills = (node.fills || []).filter((f) => f.visible !== false)
-
-  return {
-    id: node.id || '',
-    name: node.name || 'Unnamed',
-    description: node.description || '',
-    fileKey,
-    fileName,
-    fileUrl,
-    width: w,
-    height: h,
-    childCount: children.length,
-    maxDepth: getApiNodeDepth(node),
-    aspectRatio: h > 0 ? Math.round((w / h) * 100) / 100 : 1,
-    layoutMode: node.layoutMode || 'NONE',
-    cornerRadius: cr,
-    fillCount: visibleFills.length,
-    childTypeDistribution: childTypeDist,
-  }
-}
-
-// Recursively walk the node tree to find COMPONENT and COMPONENT_SET nodes
-function extractComponentNodes(
-  node: ApiNode,
-  fileKey: string,
-  fileName: string,
-  fileUrl: string,
-  components: LibraryComponent[],
-  fingerprints: LibraryComponentFingerprint[]
-): void {
-  if (node.type === 'COMPONENT_SET') {
-    components.push({
-      id: node.id || '',
-      name: node.name || 'Unnamed',
-      description: node.description || '',
-      fileKey,
-      fileName,
-      fileUrl,
-    })
-    fingerprints.push(buildApiFingerprint(node, fileKey, fileName, fileUrl))
-    return // Don't recurse into variants
-  }
-  if (node.type === 'COMPONENT') {
-    components.push({
-      id: node.id || '',
-      name: node.name || 'Unnamed',
-      description: node.description || '',
-      fileKey,
-      fileName,
-      fileUrl,
-    })
-    fingerprints.push(buildApiFingerprint(node, fileKey, fileName, fileUrl))
-  }
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) {
-      extractComponentNodes(child, fileKey, fileName, fileUrl, components, fingerprints)
-    }
-  }
-}
 
 async function fetchFigmaFile(
   fileKey: string,
@@ -962,81 +426,6 @@ async function discoverTeamFiles(teamId: string, token: string): Promise<TeamFil
     allFiles.push(...files)
   }
   return allFiles
-}
-
-// Extract top-level FRAME nodes from a REST API file response and build fingerprints
-function extractFrameFingerprints(
-  document: ApiNode,
-  fileKey: string,
-  fileName: string
-): FrameFingerprint[] {
-  const frames: FrameFingerprint[] = []
-
-  // Pages are first-level children of the document
-  const pages = document.children || []
-  for (const page of pages) {
-    if (page.type !== 'CANVAS') continue
-    const topChildren = page.children || []
-    for (const child of topChildren) {
-      if (child.type !== 'FRAME') continue
-
-      const bb = child.absoluteBoundingBox || { width: 0, height: 0 }
-      const w = Math.round(bb.width)
-      const h = Math.round(bb.height)
-      const children = child.children || []
-
-      const childTypeDist: Record<string, number> = {}
-      for (const c of children) {
-        const t = c.type || 'UNKNOWN'
-        childTypeDist[t] = (childTypeDist[t] || 0) + 1
-      }
-
-      let cr = 0
-      if (typeof child.cornerRadius === 'number') {
-        cr = child.cornerRadius
-      } else if (child.rectangleCornerRadii) {
-        cr = Math.max(...child.rectangleCornerRadii)
-      }
-
-      const visibleFills = (child.fills || []).filter((f) => f.visible !== false)
-      const layoutMode = child.layoutMode || 'NONE'
-
-      // Collect component names from INSTANCE children (shallow walk)
-      const componentNames: string[] = []
-      function walkForComponents(node: ApiNode) {
-        if (node.type === 'INSTANCE' && node.name) {
-          if (!componentNames.includes(node.name)) {
-            componentNames.push(node.name)
-          }
-        }
-        if (node.children) {
-          for (const c of node.children) walkForComponents(c)
-        }
-      }
-      walkForComponents(child)
-
-      frames.push({
-        id: child.id || '',
-        name: child.name || 'Unnamed',
-        width: w,
-        height: h,
-        childCount: children.length,
-        maxDepth: getApiNodeDepth(child),
-        componentIds: [],
-        componentNames,
-        aspectRatio: h > 0 ? Math.round((w / h) * 100) / 100 : 1,
-        layoutMode,
-        cornerRadius: cr,
-        hasAutoLayout: layoutMode !== 'NONE',
-        fillCount: visibleFills.length,
-        childTypeDistribution: childTypeDist,
-        fileKey,
-        fileName,
-      })
-    }
-  }
-
-  return frames
 }
 
 // Fetch a file and extract its frames as FrameFingerprints
@@ -1170,7 +559,7 @@ async function performScan(settings: PluginSettings): Promise<SelectedFrameScanR
     teamFileResults,
     libraryMatches,
     overallConsistency: Math.round(overallConsistency),
-    buttonIssues: buttonCheckResult.issues,
+    ruleIssues: buttonCheckResult.issues,
   }
 }
 
@@ -1301,9 +690,6 @@ figma.on('selectionchange', () => {
 })
 
 figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
-  // #region agent log
-  debugLog('code.ts:onmessage', 'Message received from UI', { msgType: msg.type }, 'A')
-  // #endregion
   switch (msg.type) {
     case 'scan': {
       try {
@@ -1367,7 +753,7 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       const saved = await figma.clientStorage.getAsync(STORAGE_KEY)
       figma.ui.postMessage({
         type: 'settings-loaded',
-        payload: saved || { token: '', libraryUrls: [], teamId: '', dashboardUrl: '' },
+        payload: saved || { token: '', libraryUrls: [], teamId: '' },
       })
       break
     }

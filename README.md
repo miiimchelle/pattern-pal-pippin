@@ -1,55 +1,39 @@
-# Into Design Systems Hackathon 2026
+# Pattern Pal (Pippin)
 
-Team Denkwerk's entry for the IDS Hackathon 2026.
+A Figma plugin that scans your designs for repeated UI patterns, compares them across your team’s files, and cross-checks them against a design-system library. Built for Into Design Systems Hackathon 2026 by Team Pippin.
 
-## Tech Stack
+## What it does
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS v4
-- Vitest
+Pattern Pal has two main workflows:
 
-## Getting Started
+### 1) Check frame (single selected frame)
+Select **one frame** in the current file, then run a scan to:
 
-```bash
-# Install dependencies
-npm install
+- Compute an **overall consistency score** (0–100)
+- Compare the selected frame to **frames in other team files** (structural similarity)
+- Find **closest matches in your design-system library** (structural similarity + name hints)
+- Flag a basic rule violation:
+  - **More than 1 Primary Button** on the same screen/container (heuristics based on variant props, fill styles, and naming)
 
-# Start dev server
-npm run dev
+### 2) Pattern discovery (Scan team files) 
+Scans **all team files** (plus local frames) and clusters similar frames into “pattern groups” using structural similarity, then:
 
-# Build for production
-npm run build
-```
+- Ranks clusters by cross-file coverage + consistency
+- Shows library component usage / potential matches
 
-## Scripts
+### Optional: Push to Dashboard
+There’s a “Push to Dashboard” UI action and a dashboard URL setting, intended for contribution tracking. In the current code, the push action is a stub (UI-only status changes) and does not POST the scan payload yet.
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format code with Prettier |
-| `npm run format:check` | Check formatting |
-| `npm test` | Run tests in watch mode |
-| `npm run test:run` | Run tests once |
-| `npm run deploy` | Deploy to Vercel |
+## Requirements
 
-## Project Structure
+- Figma desktop app (to run a local development plugin)
+- Node.js + npm
+- A **Figma Personal Access Token** (for calling the Figma REST API)
+- Your **Figma Team ID**
+- (Optional) One or more **library file URLs** (design system files)
 
-```
-src/
-├── components/
-│   ├── Hero.tsx        # Main hero component
-│   └── Hero.test.tsx   # Hero tests
-├── App.tsx             # Root app component
-├── App.test.tsx        # App tests
-├── main.tsx            # Entry point
-└── index.css           # Global styles
-```
+## Install (local development plugin)
 
-## Team
-
-**Team Denkwerk** - Cologne, Germany
+1. Install dependencies:
+   ```bash
+   npm install

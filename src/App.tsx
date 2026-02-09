@@ -30,7 +30,7 @@ function countFindings(result: SelectedFrameScanResult | null): number {
       if (m.similarity < 70) count++;
     }
   }
-  count += (result.buttonIssues ?? []).length;
+  count += (result.ruleIssues ?? []).length;
   return count;
 }
 

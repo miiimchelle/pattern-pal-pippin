@@ -146,9 +146,12 @@ async function checkPrimaryButtonPerFrame(): Promise<{
 
     if (primaryButtons.length > 1) {
       issues.push({
+        ruleId: 'primary-button-limit',
+        ruleName: 'Primary Button Limit',
+        severity: 'error',
         frameId: frame.id,
         frameName: frame.name,
-        primaryButtonIds: primaryButtons.map((btn) => btn.id),
+        nodeIds: primaryButtons.map((btn) => btn.id),
         message: `Container '${frame.name}' has ${primaryButtons.length} Primary Buttons — only one is allowed per screen.`,
       })
     }
@@ -556,7 +559,7 @@ async function performScan(settings: PluginSettings): Promise<SelectedFrameScanR
     teamFileResults,
     libraryMatches,
     overallConsistency: Math.round(overallConsistency),
-    buttonIssues: buttonCheckResult.issues,
+    ruleIssues: buttonCheckResult.issues,
   }
 }
 

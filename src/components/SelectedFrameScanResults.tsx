@@ -8,6 +8,12 @@ function similarityBadgeClass(sim: number): string {
   return 'badge';
 }
 
+function severityBadgeClass(severity: 'error' | 'warning' | 'info'): string {
+  if (severity === 'error') return 'badge bg-red-50 text-red-700!';
+  if (severity === 'warning') return 'badge bg-amber-50 text-amber-700!';
+  return 'badge bg-blue-50 text-blue-700!';
+}
+
 function buildLibraryUrl(fileKey: string, nodeId: string): string {
   const encodedNodeId = nodeId.replace(':', '-');
   return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`;
@@ -21,7 +27,7 @@ interface Props {
 
 export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame }: Props) {
   const { selectedFrame, teamFileResults, libraryMatches } = result;
-  const buttonIssues = result.buttonIssues ?? [];
+  const ruleIssues = result.ruleIssues ?? [];
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -77,17 +83,17 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
         </section>
       )}
 
-      {/* Button rule violations */}
-      {buttonIssues.length > 0 && (
+      {/* Rule violations */}
+      {ruleIssues.length > 0 && (
         <section>
           <div className="violations-header">
-            <span>Button rules</span>
-            <span className="status-count">{buttonIssues.length}</span>
+            <span>Rule violations</span>
+            <span className="status-count">{ruleIssues.length}</span>
           </div>
           <div className="violations-container">
-            {buttonIssues.map((issue) => (
+            {ruleIssues.map((issue) => (
               <div
-                key={issue.frameId}
+                key={`${issue.ruleId}-${issue.frameId}`}
                 onClick={() => onZoomToFrame?.(issue.frameId)}
                 className="violation"
                 role="button"
@@ -98,8 +104,8 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
               >
                 <div className="frame-name">
                   <span>{issue.frameName}</span>
-                  <span className="badge bg-red-50 text-red-700!">
-                    {issue.primaryButtonIds.length} primary
+                  <span className={severityBadgeClass(issue.severity)}>
+                    {issue.ruleName}
                   </span>
                 </div>
                 <div className="pattern-pal-message">
@@ -112,7 +118,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
       )}
 
       {/* Empty state */}
-      {teamFileResults.length === 0 && libraryMatches.length === 0 && buttonIssues.length === 0 && (
+      {teamFileResults.length === 0 && libraryMatches.length === 0 && ruleIssues.length === 0 && (
         <div className="empty-state">
           <div className="empty-state-icon"></div>
           <div className="empty-state-title">No violations found</div>

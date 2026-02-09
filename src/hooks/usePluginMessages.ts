@@ -81,9 +81,12 @@ export interface TeamFileResult {
 }
 
 export interface RuleIssue {
+  ruleId: string;
+  ruleName: string;
+  severity: 'error' | 'warning' | 'info';
   frameId: string;
   frameName: string;
-  primaryButtonIds: string[];
+  nodeIds: string[];
   message: string;
 }
 
@@ -92,7 +95,7 @@ export interface SelectedFrameScanResult {
   teamFileResults: TeamFileResult[];
   libraryMatches: LibraryMatch[];
   overallConsistency: number;
-  buttonIssues: RuleIssue[];
+  ruleIssues: RuleIssue[];
 }
 
 export interface PluginSettings {

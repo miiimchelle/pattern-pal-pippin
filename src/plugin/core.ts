@@ -313,7 +313,7 @@ export function findLibraryMatches(
   return scored.slice(0, maxResults).map((s) => ({
     componentId: s.fp.id,
     componentName: s.fp.name,
-    similarity: s.avgSim,
+    similarity: Math.round(s.avgSim),
     fileKey: s.fp.fileKey,
     fileUrl: s.fp.fileUrl,
   }))

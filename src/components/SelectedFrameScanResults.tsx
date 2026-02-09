@@ -70,8 +70,8 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
               >
                 <div className="frame-name">
                   <span>{match.componentName}</span>
-                  <span className={similarityBadgeClass(Math.round(match.similarity))}>
-                    {Math.round(match.similarity)}% match
+                  <span className={similarityBadgeClass(match.similarity)}>
+                    {match.similarity}% match
                   </span>
                 </div>
                 <div className="pattern-pal-message">

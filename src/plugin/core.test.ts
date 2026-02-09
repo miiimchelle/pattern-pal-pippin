@@ -362,6 +362,15 @@ describe('findLibraryMatches', () => {
     expect(matches.length).toBeLessThanOrEqual(3)
   })
 
+  it('returns integer similarity when averaging multiple frames', () => {
+    const frame1 = makeFrame({ width: 200, height: 300 })
+    const frame2 = makeFrame({ id: 'frame-2', width: 250, height: 350 })
+    const lib = makeLibFp()
+    const matches = findLibraryMatches([frame1, frame2], [lib], 0)
+    expect(matches).toHaveLength(1)
+    expect(Number.isInteger(matches[0].similarity)).toBe(true)
+  })
+
   it('sorts by similarity descending', () => {
     const frame = makeFrame()
     const close = makeLibFp({ id: 'close', name: 'Close' })

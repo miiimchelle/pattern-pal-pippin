@@ -4,6 +4,7 @@ import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
 import { Settings } from './components/Settings';
+import { RulesPanel } from './components/RulesPanel';
 import { Pippin, type PippinStatus } from './components/Pippin';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -113,10 +114,15 @@ function App() {
     teamError,
     scan,
     scanTeam,
+    cancelScan,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
+    saveRules,
+    rules,
+    showRules,
+    setShowRules,
     testConnection,
     connectionTest,
     isTestingConnection,
@@ -157,26 +163,37 @@ function App() {
         <div>
           <h1 className="pattern-pal-h1">Pattern Pal</h1>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="text-gray-400 hover:text-gray-600 p-1"
-          title="Settings"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setShowRules(!showRules); setShowSettings(false); }}
+            className="text-gray-400 hover:text-gray-600 p-1"
+            title="Design Rules"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </button>
+          <button
+            onClick={() => { setShowSettings(!showSettings); setShowRules(false); }}
+            className="text-gray-400 hover:text-gray-600 p-1"
+            title="Settings"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {showSettings ? (
@@ -189,6 +206,12 @@ function App() {
           onTestConnection={testConnection}
           connectionTest={connectionTest}
           isTestingConnection={isTestingConnection}
+        />
+      ) : showRules ? (
+        <RulesPanel
+          rules={rules}
+          onSave={saveRules}
+          onBack={() => setShowRules(false)}
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -230,30 +253,48 @@ function App() {
                 )}
 
                 {/* Primary CTA */}
-                <button
-                  onClick={scan}
-                  disabled={isScanningFrame || !selectedFrame}
-                  className="pattern-pal-btn w-full"
-                  title="Scan selected frame and compare to design library"
-                >
-                  {isScanningFrame && !frameScanProgress ? 'Checking...' : 'Scan'}
-                </button>
+                {isScanningFrame ? (
+                  <button
+                    onClick={cancelScan}
+                    className="pattern-pal-btn-secondary w-full"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={scan}
+                    disabled={!selectedFrame}
+                    className="pattern-pal-btn w-full"
+                    title="Scan selected frame and compare to design library"
+                  >
+                    Scan
+                  </button>
+                )}
 
-                {!selectedFrame && (
+                {!selectedFrame && !isScanningFrame && (
                   <p className="text-xs text-gray-500 mt-1">Select a frame to scan.</p>
                 )}
               </>
             ) : (
               <>
                 {/* Primary CTA */}
-                <button
-                  onClick={scanTeam}
-                  disabled={isScanningTeam || !settings.token || !settings.teamId}
-                  className="pattern-pal-btn w-full"
-                  title="Scan and compare against other team files"
-                >
-                  {isScanningTeam && teamScanProgress ? 'Scanning Team...' : 'Scan'}
-                </button>
+                {isScanningTeam ? (
+                  <button
+                    onClick={cancelScan}
+                    className="pattern-pal-btn-secondary w-full"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={scanTeam}
+                    disabled={!settings.token || !settings.teamId}
+                    className="pattern-pal-btn w-full"
+                    title="Scan and compare against other team files"
+                  >
+                    Scan
+                  </button>
+                )}
               </>
             )}
 

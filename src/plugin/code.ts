@@ -14,6 +14,8 @@ import {
   type TeamFileResult,
   type TeamFrameMatch,
   type FrameDetail,
+  type RuleConfig,
+  type RuleId,
   rgbToHex,
   fuzzyMatch,
   extractFileKey,
@@ -27,6 +29,12 @@ import {
   buildApiFingerprint,
   extractComponentNodes,
   extractFrameFingerprints,
+  getRelativeLuminance,
+  contrastRatio,
+  WCAG_AA_NORMAL,
+  WCAG_AA_LARGE,
+  RULE_IDS,
+  DEFAULT_RULES,
 } from './core'
 
 // Re-export types used by other parts of the codebase
@@ -44,11 +52,19 @@ export type {
   TeamFileResult,
   TeamFrameMatch,
   FrameDetail,
+  RuleConfig,
+  RuleId,
 }
 
 // ==================== STORAGE ====================
 
 const STORAGE_KEY = 'pattern-pal-settings'
+const RULES_STORAGE_KEY = 'pattern-pal-rules'
+const CACHE_STORAGE_KEY = 'pattern-pal-scan-cache'
+
+// ==================== CANCELLATION ====================
+
+let scanCancelled = false
 
 // ==================== HELPERS ====================
 
@@ -160,6 +176,259 @@ async function checkPrimaryButtonPerFrame(): Promise<{
   return {
     issues,
   }
+}
+
+// ==================== TEXT STYLE CONSISTENCY ====================
+
+function checkTextStyleConsistency(): RuleIssue[] {
+  const issues: RuleIssue[] = []
+  const frames = figma.currentPage.children.filter(
+    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
+  )
+
+  for (const frame of frames) {
+    const unstyledNodes: SceneNode[] = []
+
+    function walkText(node: SceneNode) {
+      if (node.type === 'TEXT') {
+        const textNode = node as TextNode
+        const styleId = textNode.textStyleId
+        if (styleId === '' || styleId === figma.mixed) {
+          unstyledNodes.push(textNode)
+        }
+      }
+      if ('children' in node) {
+        for (const child of (node as ChildrenMixin).children) {
+          walkText(child)
+        }
+      }
+    }
+
+    walkText(frame)
+
+    if (unstyledNodes.length > 0) {
+      issues.push({
+        ruleId: RULE_IDS.TEXT_STYLE_CONSISTENCY,
+        ruleName: 'Text Style Consistency',
+        severity: 'warning',
+        frameId: frame.id,
+        frameName: frame.name,
+        nodeIds: unstyledNodes.map((n) => n.id),
+        message: `'${frame.name}' has ${unstyledNodes.length} text node${unstyledNodes.length > 1 ? 's' : ''} without a text style.`,
+      })
+    }
+  }
+
+  return issues
+}
+
+// ==================== SPACING CONSISTENCY ====================
+
+function checkSpacingConsistency(): RuleIssue[] {
+  const issues: RuleIssue[] = []
+  const frames = figma.currentPage.children.filter(
+    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
+  )
+
+  for (const frame of frames) {
+    const spacingValues: Map<number, SceneNode[]> = new Map()
+
+    function walkAutoLayout(node: SceneNode) {
+      if ('layoutMode' in node && (node as FrameNode).layoutMode !== 'NONE') {
+        const f = node as FrameNode
+        const spacing = f.itemSpacing
+        if (!spacingValues.has(spacing)) {
+          spacingValues.set(spacing, [])
+        }
+        spacingValues.get(spacing)!.push(f)
+      }
+      if ('children' in node) {
+        for (const child of (node as ChildrenMixin).children) {
+          walkAutoLayout(child)
+        }
+      }
+    }
+
+    walkAutoLayout(frame)
+
+    if (spacingValues.size <= 1) continue
+
+    // Find outlier spacing values (appear only once when there's a dominant value)
+    const sorted = [...spacingValues.entries()].sort((a, b) => b[1].length - a[1].length)
+    const dominantCount = sorted[0][1].length
+    const outlierNodes: SceneNode[] = []
+
+    for (const [, nodes] of sorted) {
+      if (nodes.length < dominantCount && nodes.length === 1) {
+        outlierNodes.push(...nodes)
+      }
+    }
+
+    if (outlierNodes.length > 0) {
+      const uniqueValues = [...spacingValues.keys()].sort((a, b) => a - b).map((v) => `${v}px`)
+      issues.push({
+        ruleId: RULE_IDS.SPACING_CONSISTENCY,
+        ruleName: 'Spacing Consistency',
+        severity: 'warning',
+        frameId: frame.id,
+        frameName: frame.name,
+        nodeIds: outlierNodes.map((n) => n.id),
+        message: `'${frame.name}' uses ${spacingValues.size} different spacing values (${uniqueValues.join(', ')}). Consider standardizing.`,
+      })
+    }
+  }
+
+  return issues
+}
+
+// ==================== COLOR TOKEN USAGE ====================
+
+function checkColorTokenUsage(): RuleIssue[] {
+  const issues: RuleIssue[] = []
+  const frames = figma.currentPage.children.filter(
+    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
+  )
+
+  for (const frame of frames) {
+    const unstyledNodes: SceneNode[] = []
+
+    function walkFills(node: SceneNode) {
+      if ('fills' in node && Array.isArray((node as GeometryMixin).fills)) {
+        const fills = (node as GeometryMixin).fills as Paint[]
+        const hasSolidFill = fills.some((f) => f.type === 'SOLID' && f.visible !== false)
+        if (hasSolidFill) {
+          const styleId = 'fillStyleId' in node ? (node as GeometryMixin).fillStyleId : ''
+          if (styleId === '' || styleId === figma.mixed) {
+            unstyledNodes.push(node)
+          }
+        }
+      }
+      if ('children' in node) {
+        for (const child of (node as ChildrenMixin).children) {
+          walkFills(child)
+        }
+      }
+    }
+
+    walkFills(frame)
+
+    if (unstyledNodes.length > 0) {
+      issues.push({
+        ruleId: RULE_IDS.COLOR_TOKEN_USAGE,
+        ruleName: 'Color Token Usage',
+        severity: 'info',
+        frameId: frame.id,
+        frameName: frame.name,
+        nodeIds: unstyledNodes.map((n) => n.id),
+        message: `'${frame.name}' has ${unstyledNodes.length} element${unstyledNodes.length > 1 ? 's' : ''} with hardcoded colors instead of style tokens.`,
+      })
+    }
+  }
+
+  return issues
+}
+
+// ==================== CONTRAST RATIO ====================
+
+function getNearestBackgroundColor(node: SceneNode): { r: number; g: number; b: number } | null {
+  let current: BaseNode | null = node.parent
+  while (current && 'fills' in current) {
+    const fills = (current as GeometryMixin).fills
+    if (Array.isArray(fills)) {
+      for (let i = fills.length - 1; i >= 0; i--) {
+        const fill = fills[i]
+        if (fill.type === 'SOLID' && fill.visible !== false) {
+          return fill.color
+        }
+      }
+    }
+    current = current.parent
+  }
+  // Default to white background
+  return { r: 1, g: 1, b: 1 }
+}
+
+function checkContrastRatio(): RuleIssue[] {
+  const issues: RuleIssue[] = []
+  const frames = figma.currentPage.children.filter(
+    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
+  )
+
+  for (const frame of frames) {
+    const failingNodes: { node: SceneNode; ratio: number }[] = []
+
+    function walkContrast(node: SceneNode) {
+      if (node.type === 'TEXT') {
+        const textNode = node as TextNode
+        const fills = textNode.fills
+        if (Array.isArray(fills)) {
+          for (const fill of fills) {
+            if (fill.type === 'SOLID' && fill.visible !== false) {
+              const bg = getNearestBackgroundColor(textNode)
+              if (!bg) break
+              const fgLum = getRelativeLuminance(fill.color.r, fill.color.g, fill.color.b)
+              const bgLum = getRelativeLuminance(bg.r, bg.g, bg.b)
+              const ratio = contrastRatio(fgLum, bgLum)
+
+              const fontSize = typeof textNode.fontSize === 'number' ? textNode.fontSize : 16
+              const threshold = fontSize >= 18 ? WCAG_AA_LARGE : WCAG_AA_NORMAL
+
+              if (ratio < threshold) {
+                failingNodes.push({ node: textNode, ratio })
+              }
+              break // Check only the topmost fill
+            }
+          }
+        }
+      }
+      if ('children' in node) {
+        for (const child of (node as ChildrenMixin).children) {
+          walkContrast(child)
+        }
+      }
+    }
+
+    walkContrast(frame)
+
+    if (failingNodes.length > 0) {
+      issues.push({
+        ruleId: RULE_IDS.CONTRAST_RATIO,
+        ruleName: 'Contrast Ratio (WCAG AA)',
+        severity: 'error',
+        frameId: frame.id,
+        frameName: frame.name,
+        nodeIds: failingNodes.map((n) => n.node.id),
+        message: `'${frame.name}' has ${failingNodes.length} text node${failingNodes.length > 1 ? 's' : ''} that fail WCAG AA contrast (min ${WCAG_AA_NORMAL}:1).`,
+      })
+    }
+  }
+
+  return issues
+}
+
+// ==================== RULE ORCHESTRATOR ====================
+
+async function runDesignRules(enabledRules: Set<RuleId>): Promise<RuleIssue[]> {
+  const allIssues: RuleIssue[] = []
+
+  if (enabledRules.has(RULE_IDS.PRIMARY_BUTTON_LIMIT)) {
+    const result = await checkPrimaryButtonPerFrame()
+    allIssues.push(...result.issues)
+  }
+  if (enabledRules.has(RULE_IDS.TEXT_STYLE_CONSISTENCY)) {
+    allIssues.push(...checkTextStyleConsistency())
+  }
+  if (enabledRules.has(RULE_IDS.SPACING_CONSISTENCY)) {
+    allIssues.push(...checkSpacingConsistency())
+  }
+  if (enabledRules.has(RULE_IDS.COLOR_TOKEN_USAGE)) {
+    allIssues.push(...checkColorTokenUsage())
+  }
+  if (enabledRules.has(RULE_IDS.CONTRAST_RATIO)) {
+    allIssues.push(...checkContrastRatio())
+  }
+
+  return allIssues
 }
 
 // ==================== LOCAL SCANNING ====================
@@ -454,7 +723,9 @@ async function fetchFileFrames(
 
 // ==================== MAIN SCAN ====================
 
-async function performScan(settings: PluginSettings): Promise<SelectedFrameScanResult> {
+async function performScan(settings: PluginSettings, enabledRules: Set<RuleId>): Promise<SelectedFrameScanResult> {
+  scanCancelled = false
+
   if (!settings.token || !settings.teamId) {
     throw new Error(
       'Token and Team ID are required. Add them in Settings to compare against other team files.'
@@ -479,6 +750,10 @@ async function performScan(settings: PluginSettings): Promise<SelectedFrameScanR
   const fileFrameMap: Map<string, { fileName: string; frames: FrameFingerprint[] }> = new Map()
   const total = otherFiles.length
   for (let i = 0; i < otherFiles.length; i++) {
+    if (scanCancelled) {
+      figma.ui.postMessage({ type: 'scan-cancelled', payload: { partial: true } })
+      break
+    }
     const file = otherFiles[i]
     figma.ui.postMessage({
       type: 'scan-progress',
@@ -552,18 +827,20 @@ async function performScan(settings: PluginSettings): Promise<SelectedFrameScanR
     overallConsistency = 0
   }
 
-  const buttonCheckResult = await checkPrimaryButtonPerFrame()
+  const ruleIssues = await runDesignRules(enabledRules)
 
   return {
     selectedFrame: selectedFp,
     teamFileResults,
     libraryMatches,
     overallConsistency: Math.round(overallConsistency),
-    ruleIssues: buttonCheckResult.issues,
+    ruleIssues,
   }
 }
 
 async function performTeamScan(settings: PluginSettings): Promise<PatternGroup[]> {
+  scanCancelled = false
+
   if (!settings.token || !settings.teamId) {
     throw new Error('Token and Team ID are required for team scanning')
   }
@@ -583,6 +860,10 @@ async function performTeamScan(settings: PluginSettings): Promise<PatternGroup[]
   const total = teamFiles.length
 
   for (let i = 0; i < teamFiles.length; i++) {
+    if (scanCancelled) {
+      figma.ui.postMessage({ type: 'scan-cancelled', payload: { partial: true } })
+      break
+    }
     const file = teamFiles[i]
     figma.ui.postMessage({
       type: 'scan-progress',
@@ -693,16 +974,21 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
   switch (msg.type) {
     case 'scan': {
       try {
-        const settings = (msg.payload as PluginSettings) || {
-          token: '',
-          libraryUrls: [],
-          teamId: '',
-        }
-        const results = await performScan(settings)
+        const { settings: scanSettings, enabledRules: ruleIds } = msg.payload as {
+          settings: PluginSettings
+          enabledRules: string[]
+        } || { settings: { token: '', libraryUrls: [], teamId: '' }, enabledRules: [] }
+        const enabledSet = new Set(ruleIds as RuleId[])
+        const results = await performScan(scanSettings || { token: '', libraryUrls: [], teamId: '' }, enabledSet)
         figma.ui.postMessage({ type: 'scan-file-results', payload: results })
       } catch (err) {
         figma.ui.postMessage({ type: 'error', payload: `Scan failed: ${err}` })
       }
+      break
+    }
+
+    case 'cancel-scan': {
+      scanCancelled = true
       break
     }
 
@@ -754,6 +1040,20 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       figma.ui.postMessage({
         type: 'settings-loaded',
         payload: saved || { token: '', libraryUrls: [], teamId: '' },
+      })
+      break
+    }
+
+    case 'save-rules': {
+      await figma.clientStorage.setAsync(RULES_STORAGE_KEY, msg.payload)
+      break
+    }
+
+    case 'load-rules': {
+      const savedRules = await figma.clientStorage.getAsync(RULES_STORAGE_KEY)
+      figma.ui.postMessage({
+        type: 'rules-loaded',
+        payload: savedRules || DEFAULT_RULES,
       })
       break
     }

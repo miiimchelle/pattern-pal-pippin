@@ -260,4 +260,96 @@ describe('usePluginMessages', () => {
     });
     expect(result.current.teamScanProgress).toEqual({ current: 3, total: 10, fileName: 'File B' });
   });
+
+  it('cancelScan posts cancel-scan message', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      result.current.cancelScan();
+    });
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { pluginMessage: { type: 'cancel-scan', payload: undefined } },
+      '*',
+    );
+  });
+
+  it('handles scan-cancelled during frame scan', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      result.current.scan();
+    });
+    expect(result.current.isScanningFrame).toBe(true);
+    act(() => {
+      simulatePluginMessage('scan-cancelled', { partial: true });
+    });
+    expect(result.current.isScanningFrame).toBe(false);
+    expect(result.current.frameScanProgress).toBeNull();
+  });
+
+  it('handles scan-cancelled during team scan', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      result.current.scanTeam();
+    });
+    expect(result.current.isScanningTeam).toBe(true);
+    act(() => {
+      simulatePluginMessage('scan-cancelled', { partial: true });
+    });
+    expect(result.current.isScanningTeam).toBe(false);
+    expect(result.current.teamScanProgress).toBeNull();
+  });
+
+  it('posts load-rules on mount', () => {
+    renderHook(() => usePluginMessages());
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { pluginMessage: { type: 'load-rules', payload: undefined } },
+      '*',
+    );
+  });
+
+  it('handles rules-loaded message', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    const rules = [{ id: 'r1', name: 'Rule 1', description: 'desc', enabled: true }];
+    act(() => {
+      simulatePluginMessage('rules-loaded', rules);
+    });
+    expect(result.current.rules).toEqual(rules);
+  });
+
+  it('saveRules updates rules and posts message', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    const rules = [{ id: 'r1', name: 'Rule 1', description: 'desc', enabled: false }];
+    act(() => {
+      result.current.saveRules(rules);
+    });
+    expect(result.current.rules).toEqual(rules);
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { pluginMessage: { type: 'save-rules', payload: rules } },
+      '*',
+    );
+  });
+
+  it('scan sends settings and enabled rule IDs', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    const rules = [
+      { id: 'r1', name: 'Rule 1', description: 'desc', enabled: true },
+      { id: 'r2', name: 'Rule 2', description: 'desc', enabled: false },
+    ];
+    act(() => {
+      simulatePluginMessage('rules-loaded', rules);
+    });
+    act(() => {
+      result.current.scan();
+    });
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginMessage: expect.objectContaining({
+          type: 'scan',
+          payload: expect.objectContaining({
+            enabledRules: ['r1'],
+          }),
+        }),
+      }),
+      '*',
+    );
+  });
 });

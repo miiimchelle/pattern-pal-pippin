@@ -111,6 +111,13 @@ export interface ConnectionTestResult {
   error: string;
 }
 
+export interface RuleConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
@@ -127,6 +134,8 @@ export function usePluginMessages() {
   const [activeScanType, setActiveScanType] = useState<'frame' | 'team' | null>(null);
   const [connectionTest, setConnectionTest] = useState<ConnectionTestResult | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [rules, setRules] = useState<RuleConfig[]>([]);
+  const [showRules, setShowRules] = useState(false);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -155,6 +164,15 @@ export function usePluginMessages() {
             setTeamScanProgress(msg.payload);
           }
           break;
+        case 'scan-cancelled':
+          if (activeScanType === 'frame') {
+            setIsScanningFrame(false);
+            setFrameScanProgress(null);
+          } else {
+            setIsScanningTeam(false);
+            setTeamScanProgress(null);
+          }
+          break;
         case 'selection-change':
           setSelectedFrame(msg.payload);
           break;
@@ -163,6 +181,9 @@ export function usePluginMessages() {
           break;
         case 'settings-loaded':
           setSettings(msg.payload);
+          break;
+        case 'rules-loaded':
+          setRules(msg.payload);
           break;
         case 'test-connection-result':
           setConnectionTest(msg.payload);
@@ -184,6 +205,7 @@ export function usePluginMessages() {
 
     window.addEventListener('message', handler);
     postMessage('load-settings');
+    postMessage('load-rules');
     return () => window.removeEventListener('message', handler);
   }, [postMessage, activeScanType]);
 
@@ -192,8 +214,9 @@ export function usePluginMessages() {
     setIsScanningFrame(true);
     setFrameScanProgress(null);
     setActiveScanType('frame');
-    postMessage('scan', settings);
-  }, [postMessage, settings]);
+    const enabledRules = rules.filter((r) => r.enabled).map((r) => r.id);
+    postMessage('scan', { settings, enabledRules });
+  }, [postMessage, settings, rules]);
 
   const scanTeam = useCallback(() => {
     setTeamError(null);
@@ -202,6 +225,10 @@ export function usePluginMessages() {
     setActiveScanType('team');
     postMessage('scan-team', settings);
   }, [postMessage, settings]);
+
+  const cancelScan = useCallback(() => {
+    postMessage('cancel-scan');
+  }, [postMessage]);
 
   const zoomToFrame = useCallback(
     (frameId: string) => {
@@ -234,6 +261,14 @@ export function usePluginMessages() {
     [postMessage],
   );
 
+  const saveRules = useCallback(
+    (updatedRules: RuleConfig[]) => {
+      setRules(updatedRules);
+      postMessage('save-rules', updatedRules);
+    },
+    [postMessage],
+  );
+
   const testConnection = useCallback(
     (token: string, teamId: string) => {
       setConnectionTest(null);
@@ -262,10 +297,15 @@ export function usePluginMessages() {
     teamError,
     scan,
     scanTeam,
+    cancelScan,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
+    saveRules,
+    rules,
+    showRules,
+    setShowRules,
     testConnection,
     connectionTest,
     isTestingConnection,

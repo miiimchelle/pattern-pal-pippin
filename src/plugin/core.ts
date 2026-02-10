@@ -204,6 +204,51 @@ export const HIERARCHY_VARIANT_KEYS = new Set([
   'level',
 ])
 
+// ==================== CONTRAST HELPERS ====================
+
+export function getRelativeLuminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  })
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
+}
+
+export function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2)
+  const darker = Math.min(l1, l2)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+export const WCAG_AA_NORMAL = 4.5
+export const WCAG_AA_LARGE = 3
+
+// ==================== RULE IDS ====================
+
+export const RULE_IDS = {
+  PRIMARY_BUTTON_LIMIT: 'primary-button-limit',
+  TEXT_STYLE_CONSISTENCY: 'text-style-consistency',
+  SPACING_CONSISTENCY: 'spacing-consistency',
+  COLOR_TOKEN_USAGE: 'color-token-usage',
+  CONTRAST_RATIO: 'contrast-ratio',
+} as const
+
+export type RuleId = (typeof RULE_IDS)[keyof typeof RULE_IDS]
+
+export interface RuleConfig {
+  id: RuleId
+  name: string
+  description: string
+  enabled: boolean
+}
+
+export const DEFAULT_RULES: RuleConfig[] = [
+  { id: RULE_IDS.PRIMARY_BUTTON_LIMIT, name: 'Primary Button Limit', description: 'Max one primary button per screen', enabled: true },
+  { id: RULE_IDS.TEXT_STYLE_CONSISTENCY, name: 'Text Style Consistency', description: 'Text nodes should use text styles', enabled: true },
+  { id: RULE_IDS.SPACING_CONSISTENCY, name: 'Spacing Consistency', description: 'Auto-layout spacing values should be consistent', enabled: true },
+  { id: RULE_IDS.COLOR_TOKEN_USAGE, name: 'Color Token Usage', description: 'Solid fills should reference a style', enabled: true },
+  { id: RULE_IDS.CONTRAST_RATIO, name: 'Contrast Ratio (WCAG AA)', description: 'Text must meet WCAG AA contrast', enabled: true },
+]
+
 // ==================== SIMILARITY SCORING ====================
 
 export function computeStructuralSimilarity(a: StructuralShape, b: StructuralShape): number {

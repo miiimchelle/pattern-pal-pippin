@@ -12,6 +12,12 @@ import {
   buildApiFingerprint,
   extractComponentNodes,
   extractFrameFingerprints,
+  getRelativeLuminance,
+  contrastRatio,
+  WCAG_AA_NORMAL,
+  WCAG_AA_LARGE,
+  RULE_IDS,
+  DEFAULT_RULES,
   type StructuralShape,
   type FrameFingerprint,
   type LibraryComponentFingerprint,
@@ -608,5 +614,85 @@ describe('extractFrameFingerprints', () => {
     }
     const frames = extractFrameFingerprints(doc, 'fk', 'f')
     expect(frames[0].componentNames).toEqual(['Button', 'Icon'])
+  })
+})
+
+// ==================== CONTRAST HELPERS ====================
+
+describe('getRelativeLuminance', () => {
+  it('returns 0 for black', () => {
+    expect(getRelativeLuminance(0, 0, 0)).toBe(0)
+  })
+
+  it('returns 1 for white', () => {
+    expect(getRelativeLuminance(1, 1, 1)).toBeCloseTo(1, 4)
+  })
+
+  it('handles mid-gray', () => {
+    const lum = getRelativeLuminance(0.5, 0.5, 0.5)
+    expect(lum).toBeGreaterThan(0)
+    expect(lum).toBeLessThan(1)
+  })
+})
+
+describe('contrastRatio', () => {
+  it('returns 21:1 for black on white', () => {
+    const black = getRelativeLuminance(0, 0, 0)
+    const white = getRelativeLuminance(1, 1, 1)
+    expect(contrastRatio(black, white)).toBeCloseTo(21, 0)
+  })
+
+  it('returns 1:1 for same luminance', () => {
+    expect(contrastRatio(0.5, 0.5)).toBeCloseTo(1, 4)
+  })
+
+  it('is order-independent', () => {
+    expect(contrastRatio(0.2, 0.8)).toBe(contrastRatio(0.8, 0.2))
+  })
+
+  it('gray on white fails WCAG AA normal text', () => {
+    const gray = getRelativeLuminance(0.7, 0.7, 0.7)
+    const white = getRelativeLuminance(1, 1, 1)
+    expect(contrastRatio(gray, white)).toBeLessThan(WCAG_AA_NORMAL)
+  })
+
+  it('dark text on white passes WCAG AA', () => {
+    const dark = getRelativeLuminance(0.1, 0.1, 0.1)
+    const white = getRelativeLuminance(1, 1, 1)
+    expect(contrastRatio(dark, white)).toBeGreaterThan(WCAG_AA_NORMAL)
+  })
+})
+
+describe('WCAG constants', () => {
+  it('has correct WCAG AA thresholds', () => {
+    expect(WCAG_AA_NORMAL).toBe(4.5)
+    expect(WCAG_AA_LARGE).toBe(3)
+  })
+})
+
+describe('RULE_IDS', () => {
+  it('exports all 5 rule IDs', () => {
+    expect(Object.keys(RULE_IDS)).toHaveLength(5)
+    expect(RULE_IDS.PRIMARY_BUTTON_LIMIT).toBe('primary-button-limit')
+    expect(RULE_IDS.TEXT_STYLE_CONSISTENCY).toBe('text-style-consistency')
+    expect(RULE_IDS.SPACING_CONSISTENCY).toBe('spacing-consistency')
+    expect(RULE_IDS.COLOR_TOKEN_USAGE).toBe('color-token-usage')
+    expect(RULE_IDS.CONTRAST_RATIO).toBe('contrast-ratio')
+  })
+})
+
+describe('DEFAULT_RULES', () => {
+  it('has 5 rules all enabled by default', () => {
+    expect(DEFAULT_RULES).toHaveLength(5)
+    expect(DEFAULT_RULES.every((r) => r.enabled)).toBe(true)
+  })
+
+  it('each rule has required fields', () => {
+    for (const rule of DEFAULT_RULES) {
+      expect(rule.id).toBeTruthy()
+      expect(rule.name).toBeTruthy()
+      expect(rule.description).toBeTruthy()
+      expect(typeof rule.enabled).toBe('boolean')
+    }
   })
 })

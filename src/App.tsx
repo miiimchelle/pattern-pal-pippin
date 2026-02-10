@@ -117,6 +117,9 @@ function App() {
     inspectFrame,
     openInFigma,
     saveSettings,
+    testConnection,
+    connectionTest,
+    isTestingConnection,
   } = usePluginMessages();
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
@@ -183,6 +186,9 @@ function App() {
           teamId={settings.teamId}
           onSave={saveSettings}
           onBack={() => setShowSettings(false)}
+          onTestConnection={testConnection}
+          connectionTest={connectionTest}
+          isTestingConnection={isTestingConnection}
         />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">

@@ -104,6 +104,13 @@ export interface PluginSettings {
   teamId: string;
 }
 
+export interface ConnectionTestResult {
+  tokenValid: boolean;
+  teamIdValid: boolean;
+  userName: string;
+  error: string;
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
@@ -118,6 +125,8 @@ export function usePluginMessages() {
   const [frameError, setFrameError] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
   const [activeScanType, setActiveScanType] = useState<'frame' | 'team' | null>(null);
+  const [connectionTest, setConnectionTest] = useState<ConnectionTestResult | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -154,6 +163,10 @@ export function usePluginMessages() {
           break;
         case 'settings-loaded':
           setSettings(msg.payload);
+          break;
+        case 'test-connection-result':
+          setConnectionTest(msg.payload);
+          setIsTestingConnection(false);
           break;
         case 'error':
           if (activeScanType === 'frame') {
@@ -221,6 +234,15 @@ export function usePluginMessages() {
     [postMessage],
   );
 
+  const testConnection = useCallback(
+    (token: string, teamId: string) => {
+      setConnectionTest(null);
+      setIsTestingConnection(true);
+      postMessage('test-connection', { token, teamId });
+    },
+    [postMessage],
+  );
+
   const close = useCallback(() => {
     postMessage('close');
   }, [postMessage]);
@@ -244,6 +266,9 @@ export function usePluginMessages() {
     inspectFrame,
     openInFigma,
     saveSettings,
+    testConnection,
+    connectionTest,
+    isTestingConnection,
     close,
   };
 }

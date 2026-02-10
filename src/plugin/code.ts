@@ -758,6 +758,36 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       break
     }
 
+    case 'test-connection': {
+      const { token, teamId } = msg.payload as { token: string; teamId: string }
+      const result = { tokenValid: false, teamIdValid: false, userName: '', error: '' }
+      try {
+        const meResp = await fetch('https://api.figma.com/v1/me', {
+          headers: { 'X-Figma-Token': token },
+        })
+        result.tokenValid = meResp.ok
+        if (meResp.ok) {
+          const me = await meResp.json()
+          result.userName = me.handle || me.email || ''
+        }
+      } catch (err) {
+        result.error = `Token check failed: ${err}`
+      }
+      if (result.tokenValid && teamId) {
+        try {
+          const teamResp = await fetchWithRetry(
+            `https://api.figma.com/v1/teams/${teamId}/projects`,
+            token
+          )
+          result.teamIdValid = teamResp.ok
+        } catch (err) {
+          result.error = `Team ID check failed: ${err}`
+        }
+      }
+      figma.ui.postMessage({ type: 'test-connection-result', payload: result })
+      break
+    }
+
     case 'close':
       figma.closePlugin()
       break

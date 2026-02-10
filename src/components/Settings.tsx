@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ConnectionTestResult } from '../hooks/usePluginMessages';
 
 interface Props {
   token: string;
@@ -6,14 +7,27 @@ interface Props {
   teamId: string;
   onSave: (token: string, urls: string[], teamId: string) => void;
   onBack: () => void;
+  onTestConnection?: (token: string, teamId: string) => void;
+  connectionTest?: ConnectionTestResult | null;
+  isTestingConnection?: boolean;
 }
 
-export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId: initialTeamId, onSave, onBack }: Props) {
+export function Settings({
+  token: initialToken,
+  libraryUrls: initialUrls,
+  teamId: initialTeamId,
+  onSave,
+  onBack,
+  onTestConnection,
+  connectionTest,
+  isTestingConnection,
+}: Props) {
   const [token, setToken] = useState(initialToken);
   const [urlsText, setUrlsText] = useState(initialUrls.join('\n'));
   const [teamId, setTeamId] = useState(initialTeamId);
 
   const canSave = token.trim().length > 0 && teamId.trim().length > 0;
+  const canTest = token.trim().length > 0;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -22,6 +36,11 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
       .map((u) => u.trim())
       .filter((u) => u.length > 0);
     onSave(token, urls, teamId);
+  };
+
+  const handleTestConnection = () => {
+    if (!canTest || !onTestConnection) return;
+    onTestConnection(token, teamId);
   };
 
   return (
@@ -45,6 +64,17 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
           <p className="pattern-pal-message mt-1">
             Get from Figma &rarr; Settings &rarr; Personal access tokens
           </p>
+          {connectionTest && (
+            <div className="mt-1 flex items-center gap-1.5 text-xs">
+              {connectionTest.tokenValid ? (
+                <span className="text-green-600">
+                  &#10003; Token valid{connectionTest.userName ? ` (${connectionTest.userName})` : ''}
+                </span>
+              ) : (
+                <span className="text-red-600">&#10007; Invalid token</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -61,6 +91,15 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
           <p className="pattern-pal-message mt-1">
             Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
           </p>
+          {connectionTest && connectionTest.tokenValid && teamId.trim().length > 0 && (
+            <div className="mt-1 flex items-center gap-1.5 text-xs">
+              {connectionTest.teamIdValid ? (
+                <span className="text-green-600">&#10003; Team ID valid</span>
+              ) : (
+                <span className="text-red-600">&#10007; Invalid Team ID</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -75,6 +114,10 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
             className="pattern-pal-textarea"
           />
         </div>
+
+        {connectionTest?.error && (
+          <div className="text-xs text-red-600">{connectionTest.error}</div>
+        )}
 
         <div className="flex gap-2">
           <button
@@ -92,6 +135,17 @@ export function Settings({ token: initialToken, libraryUrls: initialUrls, teamId
             Cancel
           </button>
         </div>
+
+        {onTestConnection && (
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={!canTest || isTestingConnection}
+            className="pattern-pal-btn-secondary w-full"
+          >
+            {isTestingConnection ? 'Testing...' : 'Test Connection'}
+          </button>
+        )}
       </div>
     </div>
   );

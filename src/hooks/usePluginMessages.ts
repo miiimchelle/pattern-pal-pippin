@@ -104,6 +104,25 @@ export interface PluginSettings {
   teamId: string;
 }
 
+export interface ConnectionTestResult {
+  tokenValid: boolean;
+  teamIdValid: boolean;
+  userName: string;
+  error: string;
+}
+
+export interface RuleConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface CachedScanData {
+  result: SelectedFrameScanResult;
+  timestamp: number;
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
@@ -118,6 +137,12 @@ export function usePluginMessages() {
   const [frameError, setFrameError] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
   const [activeScanType, setActiveScanType] = useState<'frame' | 'team' | null>(null);
+  const [connectionTest, setConnectionTest] = useState<ConnectionTestResult | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [rules, setRules] = useState<RuleConfig[]>([]);
+  const [showRules, setShowRules] = useState(false);
+  const [cachedTimestamp, setCachedTimestamp] = useState<number | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -138,12 +163,22 @@ export function usePluginMessages() {
           setSelectedFrameScanResult(msg.payload);
           setIsScanningFrame(false);
           setFrameScanProgress(null);
+          setCachedTimestamp(Date.now());
           break;
         case 'scan-progress':
           if (activeScanType === 'frame') {
             setFrameScanProgress(msg.payload);
           } else {
             setTeamScanProgress(msg.payload);
+          }
+          break;
+        case 'scan-cancelled':
+          if (activeScanType === 'frame') {
+            setIsScanningFrame(false);
+            setFrameScanProgress(null);
+          } else {
+            setIsScanningTeam(false);
+            setTeamScanProgress(null);
           }
           break;
         case 'selection-change':
@@ -154,6 +189,24 @@ export function usePluginMessages() {
           break;
         case 'settings-loaded':
           setSettings(msg.payload);
+          break;
+        case 'rules-loaded':
+          setRules(msg.payload);
+          break;
+        case 'cache-loaded':
+          if (msg.payload) {
+            const cached = msg.payload as CachedScanData;
+            setSelectedFrameScanResult(cached.result);
+            setCachedTimestamp(cached.timestamp);
+          }
+          break;
+        case 'cache-cleared':
+          setCachedTimestamp(null);
+          setSelectedFrameScanResult(null);
+          break;
+        case 'test-connection-result':
+          setConnectionTest(msg.payload);
+          setIsTestingConnection(false);
           break;
         case 'error':
           if (activeScanType === 'frame') {
@@ -171,6 +224,8 @@ export function usePluginMessages() {
 
     window.addEventListener('message', handler);
     postMessage('load-settings');
+    postMessage('load-rules');
+    postMessage('load-cache');
     return () => window.removeEventListener('message', handler);
   }, [postMessage, activeScanType]);
 
@@ -179,8 +234,9 @@ export function usePluginMessages() {
     setIsScanningFrame(true);
     setFrameScanProgress(null);
     setActiveScanType('frame');
-    postMessage('scan', settings);
-  }, [postMessage, settings]);
+    const enabledRules = rules.filter((r) => r.enabled).map((r) => r.id);
+    postMessage('scan', { settings, enabledRules });
+  }, [postMessage, settings, rules]);
 
   const scanTeam = useCallback(() => {
     setTeamError(null);
@@ -189,6 +245,10 @@ export function usePluginMessages() {
     setActiveScanType('team');
     postMessage('scan-team', settings);
   }, [postMessage, settings]);
+
+  const cancelScan = useCallback(() => {
+    postMessage('cancel-scan');
+  }, [postMessage]);
 
   const zoomToFrame = useCallback(
     (frameId: string) => {
@@ -221,6 +281,37 @@ export function usePluginMessages() {
     [postMessage],
   );
 
+  const saveRules = useCallback(
+    (updatedRules: RuleConfig[]) => {
+      setRules(updatedRules);
+      postMessage('save-rules', updatedRules);
+    },
+    [postMessage],
+  );
+
+  const testConnection = useCallback(
+    (token: string, teamId: string) => {
+      setConnectionTest(null);
+      setIsTestingConnection(true);
+      postMessage('test-connection', { token, teamId });
+    },
+    [postMessage],
+  );
+
+  const clearCache = useCallback(() => {
+    postMessage('clear-cache');
+  }, [postMessage]);
+
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      setCopySuccess(false);
+    }
+  }, []);
+
   const close = useCallback(() => {
     postMessage('close');
   }, [postMessage]);
@@ -240,10 +331,22 @@ export function usePluginMessages() {
     teamError,
     scan,
     scanTeam,
+    cancelScan,
     zoomToFrame,
     inspectFrame,
     openInFigma,
     saveSettings,
+    saveRules,
+    rules,
+    showRules,
+    setShowRules,
+    testConnection,
+    connectionTest,
+    isTestingConnection,
+    cachedTimestamp,
+    clearCache,
+    copyToClipboard,
+    copySuccess,
     close,
   };
 }

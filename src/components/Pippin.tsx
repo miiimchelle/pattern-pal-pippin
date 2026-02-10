@@ -150,12 +150,14 @@ export function Pippin({ status, overallConsistency }: Props) {
   );
 
   return (
-    <div className="flex flex-row items-center justify-center gap-2 my-2">
+    <div className="flex flex-row items-center justify-center gap-2 my-2" aria-label="Pippin mascot">
       {/* Sprite — Pippin (tamagotchi class from global.css) */}
       <div className="tamagotchi pattern-pal-sprite animate-float" style={spriteStyle(mood.spriteKey)} aria-hidden="true" />
 
       {/* Speech bubble — to the right of the sprite */}
       <div
+        role="status"
+        aria-live="polite"
         className="relative z-10 bg-white rounded-xl px-3 py-1.5 text-left text-xs text-[#374151] leading-snug max-w-[220px]"
         style={{
           boxShadow: '0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',

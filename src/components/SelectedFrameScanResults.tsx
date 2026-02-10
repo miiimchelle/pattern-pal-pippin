@@ -30,7 +30,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
   const ruleIssues = result.ruleIssues ?? [];
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4" aria-label={`Scan results for ${selectedFrame.name}`}>
       {/* Frame name */}
       <div className="border-b border-gray-200 pb-3">
         <h2 className="frame-name text-sm truncate" title={selectedFrame.name}>
@@ -40,7 +40,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
 
       {/* Team file matches as violation cards */}
       {teamFileResults.length > 0 && (
-        <section>
+        <section aria-label="Team file matches">
           <div className="violations-header">
             <span>Team files</span>
             <span className="status-count">{teamFileResults.length}</span>
@@ -51,7 +51,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
 
       {/* Library matches as violation cards */}
       {libraryMatches.length > 0 && (
-        <section>
+        <section aria-label="Library matches">
           <div className="violations-header">
             <span>Design library</span>
             <span className="status-count">{libraryMatches.length}</span>
@@ -70,8 +70,8 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
               >
                 <div className="frame-name">
                   <span>{match.componentName}</span>
-                  <span className={similarityBadgeClass(Math.round(match.similarity))}>
-                    {Math.round(match.similarity)}% match
+                  <span className={similarityBadgeClass(match.similarity)}>
+                    {match.similarity}% match
                   </span>
                 </div>
                 <div className="pattern-pal-message">
@@ -85,7 +85,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
 
       {/* Rule violations */}
       {ruleIssues.length > 0 && (
-        <section>
+        <section aria-label="Rule violations">
           <div className="violations-header">
             <span>Rule violations</span>
             <span className="status-count">{ruleIssues.length}</span>
@@ -119,8 +119,8 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
 
       {/* Empty state */}
       {teamFileResults.length === 0 && libraryMatches.length === 0 && ruleIssues.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-state-icon"></div>
+        <div className="empty-state" role="status">
+          <div className="empty-state-icon" aria-hidden="true"></div>
           <div className="empty-state-title">No violations found</div>
           <div className="empty-state-description">Your design follows the pattern rules</div>
         </div>

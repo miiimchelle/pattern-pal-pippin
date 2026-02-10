@@ -11,7 +11,7 @@ describe('App', () => {
 
   it('renders settings gear button', () => {
     render(<App />)
-    expect(screen.getByTitle('Settings')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument()
   })
 
   it('shows Scan button on frame tab', () => {
@@ -43,7 +43,7 @@ describe('App', () => {
 
   it('switches to Settings when gear is clicked', async () => {
     render(<App />)
-    await userEvent.click(screen.getByTitle('Settings'))
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(screen.getByText(/Figma Personal Access Token/i)).toBeInTheDocument()
     expect(screen.getByText(/Figma Team ID/i)).toBeInTheDocument()
     expect(screen.getByText(/Save Settings/i)).toBeInTheDocument()
@@ -53,5 +53,37 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByText('Scan frame')).toBeInTheDocument()
     expect(screen.getByText('Scan team files')).toBeInTheDocument()
+  })
+
+  it('tab bar has proper ARIA tablist role', () => {
+    render(<App />)
+    expect(screen.getByRole('tablist', { name: 'Scan mode' })).toBeInTheDocument()
+  })
+
+  it('frame tab has aria-selected true by default', () => {
+    render(<App />)
+    const frameTab = screen.getByRole('tab', { name: 'Scan frame' })
+    expect(frameTab).toHaveAttribute('aria-selected', 'true')
+    const teamTab = screen.getByRole('tab', { name: 'Scan team files' })
+    expect(teamTab).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('tab panel has correct role and labelling', () => {
+    render(<App />)
+    const panel = screen.getByRole('tabpanel')
+    expect(panel).toHaveAttribute('aria-labelledby', 'tab-frame')
+  })
+
+  it('header buttons have aria-pressed attribute', () => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Design Rules' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('switches aria-selected when tab changes', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Scan team files' }))
+    expect(screen.getByRole('tab', { name: 'Scan frame' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Scan team files' })).toHaveAttribute('aria-selected', 'true')
   })
 })

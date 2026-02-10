@@ -24,11 +24,12 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="px-4 pb-2">
+    <div className="px-4 pb-2" role="search" aria-label="Filter results">
       <div className="flex items-center gap-2">
         <input
           type="text"
           placeholder="Filter by name..."
+          aria-label="Filter results by name"
           value={filter.searchText}
           onChange={(e) => onChange({ ...filter, searchText: e.target.value })}
           className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-indigo-400"
@@ -36,7 +37,8 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-xs text-gray-500 hover:text-gray-700 shrink-0"
-          title="More filters"
+          aria-expanded={expanded}
+          aria-label="Toggle additional filters"
         >
           {expanded ? 'Less' : 'Filters'}
         </button>
@@ -72,7 +74,7 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
           <button
             onClick={() => onChange({ ...filter, sortDir: filter.sortDir === 'asc' ? 'desc' : 'asc' })}
             className="text-xs text-gray-500 hover:text-gray-700"
-            title={filter.sortDir === 'asc' ? 'Ascending' : 'Descending'}
+            aria-label={`Sort direction: ${filter.sortDir === 'asc' ? 'ascending' : 'descending'}. Click to toggle.`}
           >
             {filter.sortDir === 'asc' ? 'Asc' : 'Desc'}
           </button>

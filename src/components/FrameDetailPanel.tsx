@@ -39,7 +39,7 @@ export function FrameDetailPanel({ frame, group, frameName, onBack, onOpenInFigm
         <button
           onClick={onBack}
           className="text-gray-400 hover:text-gray-600 p-1 -ml-1"
-          title="Back to results"
+          aria-label="Back to results"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -83,7 +83,8 @@ export function FrameDetailPanel({ frame, group, frameName, onBack, onOpenInFigm
                         key={i}
                         className="inline-block w-4 h-4 rounded border border-gray-200"
                         style={{ backgroundColor: fill }}
-                        title={fill}
+                        role="img"
+                        aria-label={`Fill color ${fill}`}
                       />
                     ))}
                   </div>

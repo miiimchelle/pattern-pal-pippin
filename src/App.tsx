@@ -89,7 +89,7 @@ function TeamAlert({ result }: { result: SelectedFrameScanResult | null }) {
   if (pct == null) return null;
 
   return (
-    <div className="alert">
+    <div className="alert" role="status">
       <div className="alert-body">
         You have used similar patterns as <strong>{pct}% of other teams</strong>.
         We will share this feedback to the design system team for improvement!
@@ -224,11 +224,12 @@ function App() {
         <div>
           <h1 className="pattern-pal-h1">Pattern Pal</h1>
         </div>
-        <div className="flex items-center gap-1">
+        <nav className="flex items-center gap-1" aria-label="Plugin controls">
           <button
             onClick={() => { setShowRules(!showRules); setShowSettings(false); }}
             className="text-gray-400 hover:text-gray-600 p-1"
-            title="Design Rules"
+            aria-label="Design Rules"
+            aria-pressed={showRules}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -237,7 +238,8 @@ function App() {
           <button
             onClick={() => { setShowSettings(!showSettings); setShowRules(false); }}
             className="text-gray-400 hover:text-gray-600 p-1"
-            title="Settings"
+            aria-label="Settings"
+            aria-pressed={showSettings}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -254,7 +256,7 @@ function App() {
               />
             </svg>
           </button>
-        </div>
+        </nav>
       </header>
 
       {showSettings ? (
@@ -277,16 +279,32 @@ function App() {
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* ---- Tab bar ---- */}
-          <div className="pattern-pal-tabs">
+          <div className="pattern-pal-tabs" role="tablist" aria-label="Scan mode">
             <button
+              role="tab"
+              id="tab-frame"
+              aria-selected={activeTab === 'frame'}
+              aria-controls="tabpanel-frame"
+              tabIndex={activeTab === 'frame' ? 0 : -1}
               className={`pattern-pal-tab ${activeTab === 'frame' ? 'pattern-pal-tab-active' : ''}`}
               onClick={() => setActiveTab('frame')}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight') { setActiveTab('team'); (e.currentTarget.nextElementSibling as HTMLElement)?.focus(); }
+              }}
             >
               Scan frame
             </button>
             <button
+              role="tab"
+              id="tab-team"
+              aria-selected={activeTab === 'team'}
+              aria-controls="tabpanel-team"
+              tabIndex={activeTab === 'team' ? 0 : -1}
               className={`pattern-pal-tab ${activeTab === 'team' ? 'pattern-pal-tab-active' : ''}`}
               onClick={() => setActiveTab('team')}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') { setActiveTab('frame'); (e.currentTarget.previousElementSibling as HTMLElement)?.focus(); }
+              }}
             >
               Scan team files
             </button>
@@ -318,6 +336,7 @@ function App() {
                   <button
                     onClick={cancelScan}
                     className="pattern-pal-btn-secondary w-full"
+                    aria-label="Cancel frame scan"
                   >
                     Cancel
                   </button>
@@ -351,9 +370,9 @@ function App() {
                       <button
                         onClick={() => copyToClipboard(exportFrameScanToMarkdown(selectedFrameScanResult))}
                         className="hover:text-gray-600"
-                        title="Copy results as Markdown"
+                        aria-label="Copy results as Markdown"
                       >
-                        {copySuccess ? 'Copied!' : 'Copy'}
+                        <span aria-live="polite">{copySuccess ? 'Copied!' : 'Copy'}</span>
                       </button>
                     </div>
                   </div>
@@ -366,6 +385,7 @@ function App() {
                   <button
                     onClick={cancelScan}
                     className="pattern-pal-btn-secondary w-full"
+                    aria-label="Cancel team scan"
                   >
                     Cancel
                   </button>
@@ -386,9 +406,9 @@ function App() {
                     <button
                       onClick={() => copyToClipboard(exportTeamScanToMarkdown(results))}
                       className="hover:text-gray-600"
-                      title="Copy results as Markdown"
+                      aria-label="Copy results as Markdown"
                     >
-                      {copySuccess ? 'Copied!' : 'Copy'}
+                      <span aria-live="polite">{copySuccess ? 'Copied!' : 'Copy'}</span>
                     </button>
                   </div>
                 )}
@@ -397,12 +417,19 @@ function App() {
 
             {/* Scan progress (scoped to active tab) */}
             {scanProgress && (
-              <div className="mt-1">
+              <div className="mt-1" role="status" aria-live="polite">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
                   <span className="truncate mr-2">{scanProgress.fileName}</span>
                   <span className="shrink-0">{scanProgress.current}/{scanProgress.total}</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div
+                  className="w-full bg-gray-200 rounded-full h-1.5"
+                  role="progressbar"
+                  aria-valuenow={scanProgress.current}
+                  aria-valuemin={0}
+                  aria-valuemax={scanProgress.total}
+                  aria-label={`Scanning ${scanProgress.fileName}: ${scanProgress.current} of ${scanProgress.total}`}
+                >
                   <div
                     className="bg-indigo-500 h-1.5 rounded-full transition-all"
                     style={{ width: `${Math.round((scanProgress.current / scanProgress.total) * 100)}%` }}
@@ -413,8 +440,8 @@ function App() {
 
             {/* Error (scoped to active tab) */}
             {error && (
-              <div className="empty-state">
-                <div className="empty-state-icon">&#9888;&#65039;</div>
+              <div className="empty-state" role="alert">
+                <div className="empty-state-icon" aria-hidden="true">&#9888;&#65039;</div>
                 <div className="empty-state-title">Check failed</div>
                 <div className="empty-state-description">{error}</div>
               </div>
@@ -431,11 +458,16 @@ function App() {
           )}
 
           {/* ---- Scrollable results area ---- */}
-          <div className="flex-1 overflow-auto">
+          <div
+            className="flex-1 overflow-auto"
+            role="tabpanel"
+            id={`tabpanel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+          >
             {activeTab === 'frame' ? (
               <>
                 {isScanningFrame && !frameScanProgress && !frameError && (
-                  <div className="loading">Scanning design file...</div>
+                  <div className="loading" role="status" aria-live="polite">Scanning design file...</div>
                 )}
                 {!isScanningFrame && selectedGroup ? (
                   <FrameDetailPanel
@@ -466,7 +498,7 @@ function App() {
                   </div>
                 )}
                 {isScanningTeam && !teamScanProgress && !teamError && (
-                  <div className="loading">Scanning design file...</div>
+                  <div className="loading" role="status" aria-live="polite">Scanning design file...</div>
                 )}
                 {!isScanningTeam ? (
                   <PatternResults

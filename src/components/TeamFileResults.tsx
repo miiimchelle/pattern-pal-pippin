@@ -27,7 +27,7 @@ interface Props {
 export function TeamFileResults({ fileResults, onOpenInFigma }: Props) {
   if (fileResults.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500">
+      <div className="p-4 text-center text-gray-500" role="status">
         No similar frames found in other team files.
       </div>
     );

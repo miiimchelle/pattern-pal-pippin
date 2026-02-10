@@ -51,7 +51,7 @@ describe('FrameDetailPanel', () => {
     render(
       <FrameDetailPanel frame={makeFrame()} group={null} onBack={onBack} onOpenInFigma={vi.fn()} />,
     );
-    fireEvent.click(screen.getByTitle('Back to results'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to results' }));
     expect(onBack).toHaveBeenCalled();
   });
 

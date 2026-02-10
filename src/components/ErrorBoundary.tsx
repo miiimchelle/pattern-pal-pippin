@@ -25,8 +25,8 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="h-screen bg-white flex flex-col items-center justify-center p-8 text-center pattern-pal-body">
-          <div className="text-4xl mb-4">&#9888;&#65039;</div>
+        <div className="h-screen bg-white flex flex-col items-center justify-center p-8 text-center pattern-pal-body" role="alert">
+          <div className="text-4xl mb-4" aria-hidden="true">&#9888;&#65039;</div>
           <h2 className="text-base font-semibold text-gray-900 mb-2">Something went wrong</h2>
           <p className="text-sm text-gray-500">
             Close and reopen the plugin to try again.

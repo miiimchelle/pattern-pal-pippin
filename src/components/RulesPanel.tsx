@@ -13,11 +13,11 @@ export function RulesPanel({ rules, onSave, onBack }: Props) {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body">
+    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body" role="region" aria-label="Design rules configuration">
       <div className="px-4 pt-1 pb-4 flex flex-col gap-3">
-        <div className="violations-header" style={{ marginBottom: 0 }}>
+        <h2 className="violations-header" style={{ marginBottom: 0 }}>
           Design Rules
-        </div>
+        </h2>
         <p className="pattern-pal-message">
           Toggle rules on or off. Enabled rules run during frame scans.
         </p>
@@ -33,10 +33,11 @@ export function RulesPanel({ rules, onSave, onBack }: Props) {
                 checked={rule.enabled}
                 onChange={() => handleToggle(rule.id)}
                 className="mt-0.5 accent-indigo-500"
+                aria-describedby={`rule-desc-${rule.id}`}
               />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-700">{rule.name}</div>
-                <div className="text-xs text-gray-400">{rule.description}</div>
+                <div id={`rule-desc-${rule.id}`} className="text-xs text-gray-400">{rule.description}</div>
               </div>
             </label>
           ))}

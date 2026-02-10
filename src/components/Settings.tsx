@@ -44,17 +44,18 @@ export function Settings({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body">
-      <div className="px-4 pt-1 pb-4 flex flex-col gap-4">
-        <div className="violations-header" style={{ marginBottom: 0 }}>
+    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body" role="region" aria-label="Plugin settings">
+      <form className="px-4 pt-1 pb-4 flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+        <h2 className="violations-header" style={{ marginBottom: 0 }}>
           Settings
-        </div>
+        </h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="settings-token" className="block text-sm font-medium text-gray-700 mb-1">
             Figma Personal Access Token
           </label>
           <input
+            id="settings-token"
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
@@ -65,7 +66,7 @@ export function Settings({
             Get from Figma &rarr; Settings &rarr; Personal access tokens
           </p>
           {connectionTest && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs">
+            <div className="mt-1 flex items-center gap-1.5 text-xs" role="status" aria-live="polite">
               {connectionTest.tokenValid ? (
                 <span className="text-green-600">
                   &#10003; Token valid{connectionTest.userName ? ` (${connectionTest.userName})` : ''}
@@ -78,10 +79,11 @@ export function Settings({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="settings-team-id" className="block text-sm font-medium text-gray-700 mb-1">
             Figma Team ID
           </label>
           <input
+            id="settings-team-id"
             type="text"
             value={teamId}
             onChange={(e) => setTeamId(e.target.value)}
@@ -92,7 +94,7 @@ export function Settings({
             Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
           </p>
           {connectionTest && connectionTest.tokenValid && teamId.trim().length > 0 && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs">
+            <div className="mt-1 flex items-center gap-1.5 text-xs" role="status" aria-live="polite">
               {connectionTest.teamIdValid ? (
                 <span className="text-green-600">&#10003; Team ID valid</span>
               ) : (
@@ -103,10 +105,11 @@ export function Settings({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="settings-library-urls" className="block text-sm font-medium text-gray-700 mb-1">
             Library File URLs (one per line)
           </label>
           <textarea
+            id="settings-library-urls"
             value={urlsText}
             onChange={(e) => setUrlsText(e.target.value)}
             placeholder="https://www.figma.com/design/ABC123/Design-System"
@@ -116,7 +119,7 @@ export function Settings({
         </div>
 
         {connectionTest?.error && (
-          <div className="text-xs text-red-600">{connectionTest.error}</div>
+          <div className="text-xs text-red-600" role="alert">{connectionTest.error}</div>
         )}
 
         <div className="flex gap-2">
@@ -146,7 +149,7 @@ export function Settings({
             {isTestingConnection ? 'Testing...' : 'Test Connection'}
           </button>
         )}
-      </div>
+      </form>
     </div>
   );
 }

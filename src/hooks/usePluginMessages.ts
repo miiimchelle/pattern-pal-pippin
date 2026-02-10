@@ -118,6 +118,11 @@ export interface RuleConfig {
   enabled: boolean;
 }
 
+export interface CachedScanData {
+  result: SelectedFrameScanResult;
+  timestamp: number;
+}
+
 export function usePluginMessages() {
   const [results, setResults] = useState<PatternGroup[]>([]);
   const [selectedFrameScanResult, setSelectedFrameScanResult] =
@@ -136,6 +141,8 @@ export function usePluginMessages() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [rules, setRules] = useState<RuleConfig[]>([]);
   const [showRules, setShowRules] = useState(false);
+  const [cachedTimestamp, setCachedTimestamp] = useState<number | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const postMessage = useCallback((type: string, payload?: unknown) => {
     parent.postMessage({ pluginMessage: { type, payload } }, '*');
@@ -156,6 +163,7 @@ export function usePluginMessages() {
           setSelectedFrameScanResult(msg.payload);
           setIsScanningFrame(false);
           setFrameScanProgress(null);
+          setCachedTimestamp(Date.now());
           break;
         case 'scan-progress':
           if (activeScanType === 'frame') {
@@ -185,6 +193,17 @@ export function usePluginMessages() {
         case 'rules-loaded':
           setRules(msg.payload);
           break;
+        case 'cache-loaded':
+          if (msg.payload) {
+            const cached = msg.payload as CachedScanData;
+            setSelectedFrameScanResult(cached.result);
+            setCachedTimestamp(cached.timestamp);
+          }
+          break;
+        case 'cache-cleared':
+          setCachedTimestamp(null);
+          setSelectedFrameScanResult(null);
+          break;
         case 'test-connection-result':
           setConnectionTest(msg.payload);
           setIsTestingConnection(false);
@@ -206,6 +225,7 @@ export function usePluginMessages() {
     window.addEventListener('message', handler);
     postMessage('load-settings');
     postMessage('load-rules');
+    postMessage('load-cache');
     return () => window.removeEventListener('message', handler);
   }, [postMessage, activeScanType]);
 
@@ -278,6 +298,20 @@ export function usePluginMessages() {
     [postMessage],
   );
 
+  const clearCache = useCallback(() => {
+    postMessage('clear-cache');
+  }, [postMessage]);
+
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      setCopySuccess(false);
+    }
+  }, []);
+
   const close = useCallback(() => {
     postMessage('close');
   }, [postMessage]);
@@ -309,6 +343,10 @@ export function usePluginMessages() {
     testConnection,
     connectionTest,
     isTestingConnection,
+    cachedTimestamp,
+    clearCache,
+    copyToClipboard,
+    copySuccess,
     close,
   };
 }

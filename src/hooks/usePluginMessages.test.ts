@@ -328,6 +328,93 @@ describe('usePluginMessages', () => {
     );
   });
 
+  it('posts load-cache on mount', () => {
+    renderHook(() => usePluginMessages());
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { pluginMessage: { type: 'load-cache', payload: undefined } },
+      '*',
+    );
+  });
+
+  it('handles cache-loaded message with data', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    const cached = {
+      result: { selectedFrame: {}, teamFileResults: [], libraryMatches: [], overallConsistency: 75, ruleIssues: [] },
+      timestamp: 1700000000000,
+    };
+    act(() => {
+      simulatePluginMessage('cache-loaded', cached);
+    });
+    expect(result.current.selectedFrameScanResult).toEqual(cached.result);
+    expect(result.current.cachedTimestamp).toBe(1700000000000);
+  });
+
+  it('handles cache-loaded message with null', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      simulatePluginMessage('cache-loaded', null);
+    });
+    expect(result.current.selectedFrameScanResult).toBeNull();
+    expect(result.current.cachedTimestamp).toBeNull();
+  });
+
+  it('clearCache posts clear-cache message', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      result.current.clearCache();
+    });
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      { pluginMessage: { type: 'clear-cache', payload: undefined } },
+      '*',
+    );
+  });
+
+  it('handles cache-cleared message', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    // First load cache
+    act(() => {
+      simulatePluginMessage('cache-loaded', {
+        result: { selectedFrame: {}, teamFileResults: [], libraryMatches: [], overallConsistency: 75, ruleIssues: [] },
+        timestamp: 1700000000000,
+      });
+    });
+    // Then clear
+    act(() => {
+      simulatePluginMessage('cache-cleared');
+    });
+    expect(result.current.cachedTimestamp).toBeNull();
+    expect(result.current.selectedFrameScanResult).toBeNull();
+  });
+
+  it('scan-file-results sets cachedTimestamp', () => {
+    const { result } = renderHook(() => usePluginMessages());
+    act(() => {
+      result.current.scan();
+    });
+    act(() => {
+      simulatePluginMessage('scan-file-results', {
+        selectedFrame: {},
+        teamFileResults: [],
+        libraryMatches: [],
+        overallConsistency: 90,
+        ruleIssues: [],
+      });
+    });
+    expect(result.current.cachedTimestamp).toBeGreaterThan(0);
+  });
+
+  it('copyToClipboard copies text and sets copySuccess', async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    const { result } = renderHook(() => usePluginMessages());
+    await act(async () => {
+      await result.current.copyToClipboard('test text');
+    });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test text');
+    expect(result.current.copySuccess).toBe(true);
+  });
+
   it('scan sends settings and enabled rule IDs', () => {
     const { result } = renderHook(() => usePluginMessages());
     const rules = [

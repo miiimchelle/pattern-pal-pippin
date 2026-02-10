@@ -981,6 +981,11 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
         const enabledSet = new Set(ruleIds as RuleId[])
         const results = await performScan(scanSettings || { token: '', libraryUrls: [], teamId: '' }, enabledSet)
         figma.ui.postMessage({ type: 'scan-file-results', payload: results })
+        // Cache frame scan results
+        await figma.clientStorage.setAsync(CACHE_STORAGE_KEY, {
+          result: results,
+          timestamp: Date.now(),
+        })
       } catch (err) {
         figma.ui.postMessage({ type: 'error', payload: `Scan failed: ${err}` })
       }
@@ -1055,6 +1060,18 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
         type: 'rules-loaded',
         payload: savedRules || DEFAULT_RULES,
       })
+      break
+    }
+
+    case 'load-cache': {
+      const cachedData = await figma.clientStorage.getAsync(CACHE_STORAGE_KEY)
+      figma.ui.postMessage({ type: 'cache-loaded', payload: cachedData || null })
+      break
+    }
+
+    case 'clear-cache': {
+      await figma.clientStorage.deleteAsync(CACHE_STORAGE_KEY)
+      figma.ui.postMessage({ type: 'cache-cleared' })
       break
     }
 

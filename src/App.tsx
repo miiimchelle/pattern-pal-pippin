@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePluginMessages, type PatternGroup, type SelectedFrameScanResult, type ScanProgress } from './hooks/usePluginMessages';
 import { PatternResults } from './components/PatternResults';
 import { SelectedFrameScanResults } from './components/SelectedFrameScanResults';
 import { FrameDetailPanel } from './components/FrameDetailPanel';
 import { Settings } from './components/Settings';
 import { RulesPanel } from './components/RulesPanel';
+import { ResultsFilterBar, DEFAULT_FILTER, type FilterState } from './components/ResultsFilterBar';
 import { Pippin, type PippinStatus } from './components/Pippin';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { exportFrameScanToMarkdown, exportTeamScanToMarkdown } from './utils/exportResults';
 
 // ---- Helpers ----
 
@@ -17,6 +19,17 @@ function deriveTeamPercentage(result: SelectedFrameScanResult | null): number | 
   if (teamFileResults.length === 0) return null;
   const filesWithMatches = teamFileResults.filter((f) => f.matches.length > 0).length;
   return Math.round((filesWithMatches / teamFileResults.length) * 100);
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 // Count "findings" (low-similarity library matches or low-consistency team matches)
@@ -126,11 +139,17 @@ function App() {
     testConnection,
     connectionTest,
     isTestingConnection,
+    cachedTimestamp,
+    clearCache,
+    copyToClipboard,
+    copySuccess,
   } = usePluginMessages();
 
   const [selectedGroup, setSelectedGroup] = useState<PatternGroup | null>(null);
   const [selectedFrameName, setSelectedFrameName] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'frame' | 'team'>('frame');
+  const [frameFilter, setFrameFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [teamFilter, setTeamFilter] = useState<FilterState>(DEFAULT_FILTER);
 
   const handleFrameClick = (frameId: string, fileKey: string | undefined, group: PatternGroup) => {
     setSelectedGroup(group);
@@ -150,6 +169,48 @@ function App() {
   };
 
   const findingsCount = countFindings(selectedFrameScanResult);
+
+  // Filtered frame scan results (filter team file matches within the result)
+  const filteredFrameResult = useMemo((): SelectedFrameScanResult | null => {
+    if (!selectedFrameScanResult) return null;
+    const f = frameFilter;
+    let teamFileResults = selectedFrameScanResult.teamFileResults;
+    if (f.searchText) {
+      const q = f.searchText.toLowerCase();
+      teamFileResults = teamFileResults.filter((r) => r.fileName.toLowerCase().includes(q));
+    }
+    if (f.minConsistency > 0) {
+      teamFileResults = teamFileResults.filter((r) => r.consistency >= f.minConsistency);
+    }
+    const dir = f.sortDir === 'asc' ? 1 : -1;
+    teamFileResults = [...teamFileResults].sort((a, b) => {
+      if (f.sortBy === 'name') return a.fileName.localeCompare(b.fileName) * dir;
+      return (a.consistency - b.consistency) * dir;
+    });
+    return { ...selectedFrameScanResult, teamFileResults };
+  }, [selectedFrameScanResult, frameFilter]);
+
+  // Filtered team scan results
+  const filteredTeamResults = useMemo((): PatternGroup[] => {
+    const f = teamFilter;
+    let groups = results;
+    if (f.searchText) {
+      const q = f.searchText.toLowerCase();
+      groups = groups.filter((g) =>
+        g.frames.some((fr) => fr.name.toLowerCase().includes(q) || (fr.fileName || '').toLowerCase().includes(q))
+      );
+    }
+    if (f.minConsistency > 0) {
+      groups = groups.filter((g) => g.consistency >= f.minConsistency);
+    }
+    const dir = f.sortDir === 'asc' ? 1 : -1;
+    groups = [...groups].sort((a, b) => {
+      if (f.sortBy === 'name') return (a.frames[0]?.name || '').localeCompare(b.frames[0]?.name || '') * dir;
+      if (f.sortBy === 'frames') return (a.frames.length - b.frames.length) * dir;
+      return (a.consistency - b.consistency) * dir;
+    });
+    return groups;
+  }, [results, teamFilter]);
 
   const isScanning = activeTab === 'frame' ? isScanningFrame : isScanningTeam;
   const scanProgress = activeTab === 'frame' ? frameScanProgress : teamScanProgress;
@@ -274,6 +335,29 @@ function App() {
                 {!selectedFrame && !isScanningFrame && (
                   <p className="text-xs text-gray-500 mt-1">Select a frame to scan.</p>
                 )}
+
+                {/* Cache timestamp + export */}
+                {selectedFrameScanResult && !isScanningFrame && (
+                  <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
+                    <span>
+                      {cachedTimestamp ? `Last scanned ${formatTimeAgo(cachedTimestamp)}` : ''}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {cachedTimestamp && (
+                        <button onClick={clearCache} className="hover:text-gray-600" title="Clear cache">
+                          Clear
+                        </button>
+                      )}
+                      <button
+                        onClick={() => copyToClipboard(exportFrameScanToMarkdown(selectedFrameScanResult))}
+                        className="hover:text-gray-600"
+                        title="Copy results as Markdown"
+                      >
+                        {copySuccess ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -294,6 +378,19 @@ function App() {
                   >
                     Scan
                   </button>
+                )}
+
+                {/* Export for team tab */}
+                {results.length > 0 && !isScanningTeam && (
+                  <div className="flex items-center justify-end mt-1 text-xs text-gray-400">
+                    <button
+                      onClick={() => copyToClipboard(exportTeamScanToMarkdown(results))}
+                      className="hover:text-gray-600"
+                      title="Copy results as Markdown"
+                    >
+                      {copySuccess ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 )}
               </>
             )}
@@ -325,6 +422,14 @@ function App() {
 
           </div>
 
+          {/* ---- Filter bar ---- */}
+          {activeTab === 'frame' && selectedFrameScanResult && !isScanningFrame && !selectedGroup && (
+            <ResultsFilterBar filter={frameFilter} onChange={setFrameFilter} />
+          )}
+          {activeTab === 'team' && results.length > 0 && !isScanningTeam && (
+            <ResultsFilterBar filter={teamFilter} onChange={setTeamFilter} showFrameSort />
+          )}
+
           {/* ---- Scrollable results area ---- */}
           <div className="flex-1 overflow-auto">
             {activeTab === 'frame' ? (
@@ -340,9 +445,9 @@ function App() {
                     onBack={handleBackFromDetail}
                     onOpenInFigma={openInFigma}
                   />
-                ) : !isScanningFrame && selectedFrameScanResult ? (
+                ) : !isScanningFrame && filteredFrameResult ? (
                   <SelectedFrameScanResults
-                    result={selectedFrameScanResult}
+                    result={filteredFrameResult}
                     onOpenInFigma={openInFigma}
                     onZoomToFrame={zoomToFrame}
                   />
@@ -365,7 +470,7 @@ function App() {
                 )}
                 {!isScanningTeam ? (
                   <PatternResults
-                    groups={results}
+                    groups={filteredTeamResults}
                     onFrameClick={handleFrameClick}
                     onOpenInFigma={openInFigma}
                   />

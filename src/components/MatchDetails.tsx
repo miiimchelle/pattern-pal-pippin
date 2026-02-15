@@ -1,36 +1,36 @@
 interface LibraryComponent {
-  id: string;
-  name: string;
-  description: string;
-  fileKey: string;
-  fileUrl: string;
+  id: string
+  name: string
+  description: string
+  fileKey: string
+  fileUrl: string
 }
 
 interface LibraryMatch {
-  componentId: string;
-  componentName: string;
-  similarity: number;
-  fileKey: string;
-  fileUrl: string;
+  componentId: string
+  componentName: string
+  similarity: number
+  fileKey: string
+  fileUrl: string
 }
 
 interface Props {
-  componentUsage: LibraryComponent[];
-  nameMatches: LibraryComponent[];
-  libraryMatches: LibraryMatch[];
-  onOpenInFigma: (url: string) => void;
+  componentUsage: LibraryComponent[]
+  nameMatches: LibraryComponent[]
+  libraryMatches: LibraryMatch[]
+  onOpenInFigma: (url: string) => void
 }
 
 function buildNodeUrl(fileKey: string, nodeId: string): string {
-  const encodedNodeId = nodeId.replace(':', '-');
-  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`;
+  const encodedNodeId = nodeId.replace(':', '-')
+  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`
 }
 
 function similarityColor(sim: number): string {
-  if (sim >= 80) return 'text-green-700 bg-green-50';
-  if (sim >= 60) return 'text-blue-700 bg-blue-50';
-  if (sim >= 40) return 'text-amber-700 bg-amber-50';
-  return 'text-gray-600 bg-gray-50';
+  if (sim >= 80) return 'text-green-700 bg-green-50'
+  if (sim >= 60) return 'text-blue-700 bg-blue-50'
+  if (sim >= 40) return 'text-amber-700 bg-amber-50'
+  return 'text-gray-600 bg-gray-50'
 }
 
 export function MatchDetails({
@@ -40,7 +40,7 @@ export function MatchDetails({
   onOpenInFigma,
 }: Props) {
   if (componentUsage.length === 0 && nameMatches.length === 0 && libraryMatches.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -48,9 +48,7 @@ export function MatchDetails({
       {/* Structural library matches */}
       {libraryMatches.length > 0 && (
         <div className="pl-3 border-l-2 border-purple-400">
-          <p className="text-xs font-medium text-purple-700 mb-1">
-            Structurally similar to:
-          </p>
+          <p className="text-xs font-medium text-purple-700 mb-1">Structurally similar to:</p>
           <div className="flex flex-col gap-1">
             {libraryMatches.map((match) => (
               <button
@@ -118,5 +116,5 @@ export function MatchDetails({
         </div>
       )}
     </div>
-  );
+  )
 }

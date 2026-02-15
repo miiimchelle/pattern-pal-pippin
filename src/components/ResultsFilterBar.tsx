@@ -1,27 +1,16 @@
-import { useState } from 'react';
+import { useState } from 'react'
+import { type FilterState } from './filterTypes'
 
-export interface FilterState {
-  minConsistency: number;
-  searchText: string;
-  sortBy: 'consistency' | 'name' | 'frames';
-  sortDir: 'asc' | 'desc';
-}
-
-export const DEFAULT_FILTER: FilterState = {
-  minConsistency: 0,
-  searchText: '',
-  sortBy: 'consistency',
-  sortDir: 'desc',
-};
+export { type FilterState, DEFAULT_FILTER } from './filterTypes'
 
 interface Props {
-  filter: FilterState;
-  onChange: (filter: FilterState) => void;
-  showFrameSort?: boolean;
+  filter: FilterState
+  onChange: (filter: FilterState) => void
+  showFrameSort?: boolean
 }
 
 export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div className="px-4 pb-2" role="search" aria-label="Filter results">
@@ -53,7 +42,10 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
               max={100}
               value={filter.minConsistency}
               onChange={(e) =>
-                onChange({ ...filter, minConsistency: Math.max(0, Math.min(100, Number(e.target.value))) })
+                onChange({
+                  ...filter,
+                  minConsistency: Math.max(0, Math.min(100, Number(e.target.value))),
+                })
               }
               className="w-12 border border-gray-200 rounded px-1 py-0.5 text-xs"
             />
@@ -63,7 +55,9 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
             Sort
             <select
               value={filter.sortBy}
-              onChange={(e) => onChange({ ...filter, sortBy: e.target.value as FilterState['sortBy'] })}
+              onChange={(e) =>
+                onChange({ ...filter, sortBy: e.target.value as FilterState['sortBy'] })
+              }
               className="border border-gray-200 rounded px-1 py-0.5 text-xs"
             >
               <option value="consistency">Score</option>
@@ -72,7 +66,9 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
             </select>
           </label>
           <button
-            onClick={() => onChange({ ...filter, sortDir: filter.sortDir === 'asc' ? 'desc' : 'asc' })}
+            onClick={() =>
+              onChange({ ...filter, sortDir: filter.sortDir === 'asc' ? 'desc' : 'asc' })
+            }
             className="text-xs text-gray-500 hover:text-gray-700"
             aria-label={`Sort direction: ${filter.sortDir === 'asc' ? 'ascending' : 'descending'}. Click to toggle.`}
           >
@@ -81,5 +77,5 @@ export function ResultsFilterBar({ filter, onChange, showFrameSort = false }: Pr
         </div>
       )}
     </div>
-  );
+  )
 }

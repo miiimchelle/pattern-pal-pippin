@@ -242,11 +242,36 @@ export interface RuleConfig {
 }
 
 export const DEFAULT_RULES: RuleConfig[] = [
-  { id: RULE_IDS.PRIMARY_BUTTON_LIMIT, name: 'Primary Button Limit', description: 'Max one primary button per screen', enabled: true },
-  { id: RULE_IDS.TEXT_STYLE_CONSISTENCY, name: 'Text Style Consistency', description: 'Text nodes should use text styles', enabled: true },
-  { id: RULE_IDS.SPACING_CONSISTENCY, name: 'Spacing Consistency', description: 'Auto-layout spacing values should be consistent', enabled: true },
-  { id: RULE_IDS.COLOR_TOKEN_USAGE, name: 'Color Token Usage', description: 'Solid fills should reference a style', enabled: true },
-  { id: RULE_IDS.CONTRAST_RATIO, name: 'Contrast Ratio (WCAG AA)', description: 'Text must meet WCAG AA contrast', enabled: true },
+  {
+    id: RULE_IDS.PRIMARY_BUTTON_LIMIT,
+    name: 'Primary Button Limit',
+    description: 'Max one primary button per screen',
+    enabled: true,
+  },
+  {
+    id: RULE_IDS.TEXT_STYLE_CONSISTENCY,
+    name: 'Text Style Consistency',
+    description: 'Text nodes should use text styles',
+    enabled: true,
+  },
+  {
+    id: RULE_IDS.SPACING_CONSISTENCY,
+    name: 'Spacing Consistency',
+    description: 'Auto-layout spacing values should be consistent',
+    enabled: true,
+  },
+  {
+    id: RULE_IDS.COLOR_TOKEN_USAGE,
+    name: 'Color Token Usage',
+    description: 'Solid fills should reference a style',
+    enabled: true,
+  },
+  {
+    id: RULE_IDS.CONTRAST_RATIO,
+    name: 'Contrast Ratio (WCAG AA)',
+    description: 'Text must meet WCAG AA contrast',
+    enabled: true,
+  },
 ]
 
 // ==================== SIMILARITY SCORING ====================

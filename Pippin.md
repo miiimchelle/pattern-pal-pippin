@@ -4,7 +4,7 @@ This file defines all user-facing copy for Pippin, the design system pal.
 Tone guidelines:
 First-person (“I”, “me”)
 Friendly, playful, never judging
-Problems are framed as *how Pippin feels*, not user mistakes
+Problems are framed as _how Pippin feels_, not user mistakes
 Short, rotatable strings to avoid repetition
 
 ---
@@ -12,6 +12,7 @@ Short, rotatable strings to avoid repetition
 ## :arrows_counterclockwise: Interaction States
 
 ### Loading
+
 _When data or rules are still being fetched_
 
 "Hold on… I’m waking up my brain."
@@ -23,6 +24,7 @@ _When data or rules are still being fetched_
 ---
 
 ### Checking
+
 _When validating against the design system_
 
 "Okay… let me check the rules."
@@ -34,6 +36,7 @@ _When validating against the design system_
 ---
 
 ### Success
+
 _Check completed successfully (emotion state follows)_
 
 "All done! I survived :sparkles:"
@@ -45,6 +48,7 @@ _Check completed successfully (emotion state follows)_
 ---
 
 ### Error
+
 _Technical or system error (not design quality)_
 
 "Uh oh… that wasn’t supposed to happen."
@@ -58,6 +62,7 @@ _Technical or system error (not design quality)_
 ## :crescent_moon: Mood States (Character Variants)
 
 ### AtNight
+
 _Time-of-day override · 9pm–5am · sleepy neutral_
 
 "Pippin is awake… but only one eye :sleeping:"
@@ -69,6 +74,7 @@ _Time-of-day override · 9pm–5am · sleepy neutral_
 ---
 
 ### VeryHappy
+
 _Emotion: celebrating · Score ≥ 85_
 
 "LOOK AT ME I’M THRIVING :sparkling_heart:"
@@ -80,6 +86,7 @@ _Emotion: celebrating · Score ≥ 85_
 ---
 
 ### Excited
+
 _Emotion: excited or waving · Score 70–84_
 
 "Oh! Oh! This is nice!!"
@@ -91,6 +98,7 @@ _Emotion: excited or waving · Score 70–84_
 ---
 
 ### Proud
+
 _Emotion: happy · Score 55–69_
 
 "I’m feeling pretty good about this."
@@ -102,6 +110,7 @@ _Emotion: happy · Score 55–69_
 ---
 
 ### Idea
+
 _Emotion: thinking or concerned · Score 40–54_
 
 "Hmm… let me think for a sec."
@@ -113,6 +122,7 @@ _Emotion: thinking or concerned · Score 40–54_
 ---
 
 ### AngryWitch
+
 _Emotion: alarmed · Score < 40 · critical problems_
 
 Note: Concerned, not angry. This should feel like Pippin needs help.
@@ -126,6 +136,7 @@ Note: Concerned, not angry. This should feel like Pippin needs help.
 ---
 
 ## :bubbles: Micro / Idle Lines
+
 _Short, low-noise responses for frequent checks_
 
 "I’m okay!"
@@ -139,12 +150,12 @@ _Short, low-noise responses for frequent checks_
 ## :repeat: Optional Transitions
 
 Loading → Checking  
-  "Okay… I’m ready."
+ "Okay… I’m ready."
 
 Checking → Success  
-  "And… that’s everything!"
+ "And… that’s everything!"
 
 Error → Retry  
-  "Deep breath. Trying again."
+ "Deep breath. Trying again."
 
 ---

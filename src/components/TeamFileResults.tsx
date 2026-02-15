@@ -1,27 +1,27 @@
-import type { TeamFileResult } from '../hooks/usePluginMessages';
+import type { TeamFileResult } from '../hooks/usePluginMessages'
 
 function consistencyColor(c: number): string {
-  if (c >= 90) return 'bg-green-100 text-green-700';
-  if (c >= 75) return 'bg-blue-100 text-blue-700';
-  if (c >= 60) return 'bg-amber-100 text-amber-700';
-  return 'bg-red-100 text-red-700';
+  if (c >= 90) return 'bg-green-100 text-green-700'
+  if (c >= 75) return 'bg-blue-100 text-blue-700'
+  if (c >= 60) return 'bg-amber-100 text-amber-700'
+  return 'bg-red-100 text-red-700'
 }
 
 function similarityColor(sim: number): string {
-  if (sim >= 80) return 'text-green-700 bg-green-50';
-  if (sim >= 60) return 'text-blue-700 bg-blue-50';
-  if (sim >= 40) return 'text-amber-700 bg-amber-50';
-  return 'text-gray-600 bg-gray-50';
+  if (sim >= 80) return 'text-green-700 bg-green-50'
+  if (sim >= 60) return 'text-blue-700 bg-blue-50'
+  if (sim >= 40) return 'text-amber-700 bg-amber-50'
+  return 'text-gray-600 bg-gray-50'
 }
 
 function buildNodeUrl(fileKey: string, nodeId: string): string {
-  const encodedNodeId = nodeId.replace(':', '-');
-  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`;
+  const encodedNodeId = nodeId.replace(':', '-')
+  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`
 }
 
 interface Props {
-  fileResults: TeamFileResult[];
-  onOpenInFigma: (url: string) => void;
+  fileResults: TeamFileResult[]
+  onOpenInFigma: (url: string) => void
 }
 
 export function TeamFileResults({ fileResults, onOpenInFigma }: Props) {
@@ -30,7 +30,7 @@ export function TeamFileResults({ fileResults, onOpenInFigma }: Props) {
       <div className="p-4 text-center text-gray-500" role="status">
         No similar frames found in other team files.
       </div>
-    );
+    )
   }
 
   return (
@@ -72,5 +72,5 @@ export function TeamFileResults({ fileResults, onOpenInFigma }: Props) {
         </div>
       ))}
     </div>
-  );
+  )
 }

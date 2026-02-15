@@ -42,6 +42,7 @@ Figma plugins run in a **dual-context** architecture:
 ```
 
 Key fields:
+
 - `editorType`: `["figma"]`, `["figjam"]`, or `["figma", "figjam"]`
 - `networkAccess.allowedDomains`: Required for any network calls from UI. Use `["none"]` if no network needed, `["*"]` for unrestricted
 - `capabilities`: `["inspect"]` for Dev Mode plugins, `["codegen"]` for code generators
@@ -50,29 +51,37 @@ Key fields:
 ### Message Passing
 
 **Sandbox → UI:**
+
 ```js
-figma.ui.postMessage({ type: 'results', data: payload });
+figma.ui.postMessage({ type: 'results', data: payload })
 ```
 
 **UI → Sandbox:**
+
 ```js
-parent.postMessage({ pluginMessage: { type: 'action', data: payload } }, '*');
+parent.postMessage({ pluginMessage: { type: 'action', data: payload } }, '*')
 ```
 
 **Listening (sandbox):**
+
 ```js
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'action') { /* handle */ }
-};
+  if (msg.type === 'action') {
+    /* handle */
+  }
+}
 ```
 
 **Listening (UI):**
+
 ```js
 window.onmessage = (event) => {
-  const msg = event.data.pluginMessage;
-  if (!msg) return;
-  if (msg.type === 'results') { /* handle */ }
-};
+  const msg = event.data.pluginMessage
+  if (!msg) return
+  if (msg.type === 'results') {
+    /* handle */
+  }
+}
 ```
 
 **CRITICAL**: Messages are serialized via structured clone. You cannot send functions, DOM nodes, class instances, or circular references. Plain objects, arrays, strings, numbers, booleans, `null`, `Uint8Array`, and `ArrayBuffer` are safe.
@@ -83,10 +92,10 @@ window.onmessage = (event) => {
 figma.showUI(__html__, {
   width: 400,
   height: 500,
-  themeColors: true,   // Inject Figma's CSS variables for theme support
-  visible: true,       // Set false for headless plugins
+  themeColors: true, // Inject Figma's CSS variables for theme support
+  visible: true, // Set false for headless plugins
   position: { x: 0, y: 0 },
-});
+})
 ```
 
 Resize at runtime: `figma.ui.resize(newWidth, newHeight)`
@@ -112,42 +121,42 @@ Document
 
 ### Key Node Properties (shared)
 
-| Property | Type | Notes |
-|----------|------|-------|
-| `id` | `string` | Unique within file |
-| `name` | `string` | Layer name |
-| `type` | `string` | e.g. `'FRAME'`, `'TEXT'` |
-| `parent` | `BaseNode \| null` | Parent node |
-| `children` | `ReadonlyArray<SceneNode>` | Only on container nodes |
-| `visible` | `boolean` | Visibility |
-| `locked` | `boolean` | Lock state |
-| `opacity` | `number` | 0–1 |
-| `x`, `y` | `number` | Position relative to parent |
-| `width`, `height` | `number` | Dimensions |
-| `rotation` | `number` | Degrees |
-| `fills` | `ReadonlyArray<Paint>` | Fill paints |
-| `strokes` | `ReadonlyArray<Paint>` | Stroke paints |
-| `effects` | `ReadonlyArray<Effect>` | Drop shadow, blur, etc. |
-| `constraints` | `Constraints` | Horizontal/vertical constraints |
-| `layoutMode` | `'NONE' \| 'HORIZONTAL' \| 'VERTICAL'` | Auto-layout direction |
+| Property          | Type                                   | Notes                           |
+| ----------------- | -------------------------------------- | ------------------------------- |
+| `id`              | `string`                               | Unique within file              |
+| `name`            | `string`                               | Layer name                      |
+| `type`            | `string`                               | e.g. `'FRAME'`, `'TEXT'`        |
+| `parent`          | `BaseNode \| null`                     | Parent node                     |
+| `children`        | `ReadonlyArray<SceneNode>`             | Only on container nodes         |
+| `visible`         | `boolean`                              | Visibility                      |
+| `locked`          | `boolean`                              | Lock state                      |
+| `opacity`         | `number`                               | 0–1                             |
+| `x`, `y`          | `number`                               | Position relative to parent     |
+| `width`, `height` | `number`                               | Dimensions                      |
+| `rotation`        | `number`                               | Degrees                         |
+| `fills`           | `ReadonlyArray<Paint>`                 | Fill paints                     |
+| `strokes`         | `ReadonlyArray<Paint>`                 | Stroke paints                   |
+| `effects`         | `ReadonlyArray<Effect>`                | Drop shadow, blur, etc.         |
+| `constraints`     | `Constraints`                          | Horizontal/vertical constraints |
+| `layoutMode`      | `'NONE' \| 'HORIZONTAL' \| 'VERTICAL'` | Auto-layout direction           |
 
 ### Traversal
 
 ```js
 // All instances on current page
-const instances = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] });
+const instances = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] })
 
 // Find by name
-const node = figma.currentPage.findOne(n => n.name === 'Button');
+const node = figma.currentPage.findOne((n) => n.name === 'Button')
 
 // Find all text nodes
-const texts = figma.currentPage.findAll(n => n.type === 'TEXT');
+const texts = figma.currentPage.findAll((n) => n.type === 'TEXT')
 
 // Walk children manually
 function walk(node, callback) {
-  callback(node);
+  callback(node)
   if ('children' in node) {
-    for (const child of node.children) walk(child, callback);
+    for (const child of node.children) walk(child, callback)
   }
 }
 ```
@@ -175,11 +184,11 @@ ComponentSetNode (variant group, e.g. "Button")
 
 ```js
 // On a ComponentSetNode:
-const variantGroupProperties = componentSet.variantGroupProperties;
+const variantGroupProperties = componentSet.variantGroupProperties
 // { "Size": { values: ["S", "M", "L"] }, "State": { values: ["Default", "Hover"] } }
 
 // On an InstanceNode — change variant:
-instance.setProperties({ "Size": "L", "State": "Hover" });
+instance.setProperties({ Size: 'L', State: 'Hover' })
 ```
 
 ## Text
@@ -187,17 +196,18 @@ instance.setProperties({ "Size": "L", "State": "Hover" });
 **Always load fonts before modifying text:**
 
 ```js
-const textNode = figma.createText();
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-textNode.characters = "Hello World";
-textNode.fontSize = 16;
-textNode.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+const textNode = figma.createText()
+await figma.loadFontAsync({ family: 'Inter', style: 'Regular' })
+textNode.characters = 'Hello World'
+textNode.fontSize = 16
+textNode.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }]
 ```
 
 For mixed-style text, load all needed fonts first, then use range methods:
+
 ```js
-textNode.setRangeFontSize(0, 5, 24);       // First 5 chars at 24px
-textNode.setRangeFills(0, 5, [solidPaint]); // First 5 chars colored
+textNode.setRangeFontSize(0, 5, 24) // First 5 chars at 24px
+textNode.setRangeFills(0, 5, [solidPaint]) // First 5 chars colored
 ```
 
 **GOTCHA**: `textNode.fontName` throws if the text has mixed fonts. Use `textNode.getRangeFontName(0, 1)` for safety, or load all fonts via `textNode.getRangeAllFontNames(0, textNode.characters.length)`.
@@ -206,7 +216,7 @@ textNode.setRangeFills(0, 5, [solidPaint]); // First 5 chars colored
 
 ```js
 // Solid color (RGB 0–1, NOT 0–255)
-const solidFill = { type: 'SOLID', color: { r: 1, g: 0.4, b: 0.3 }, opacity: 1 };
+const solidFill = { type: 'SOLID', color: { r: 1, g: 0.4, b: 0.3 }, opacity: 1 }
 
 // Gradient
 const gradientFill = {
@@ -215,15 +225,18 @@ const gradientFill = {
     { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
     { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
   ],
-  gradientTransform: [[1, 0, 0], [0, 1, 0]],
-};
+  gradientTransform: [
+    [1, 0, 0],
+    [0, 1, 0],
+  ],
+}
 
 // Image fill
-const imageHash = figma.createImage(imageBytes).hash;
-const imageFill = { type: 'IMAGE', scaleMode: 'FILL', imageHash };
+const imageHash = figma.createImage(imageBytes).hash
+const imageFill = { type: 'IMAGE', scaleMode: 'FILL', imageHash }
 
 // Apply fills (REPLACES all fills — clone first to preserve existing)
-node.fills = [solidFill];
+node.fills = [solidFill]
 ```
 
 **CRITICAL**: Colors use 0–1 range. Convert from hex: `r = 0xE5 / 255`.
@@ -231,42 +244,46 @@ node.fills = [solidFill];
 ## Auto Layout
 
 ```js
-const frame = figma.createFrame();
-frame.layoutMode = 'VERTICAL';          // or 'HORIZONTAL'
-frame.primaryAxisAlignItems = 'CENTER'; // main axis: MIN | CENTER | MAX | SPACE_BETWEEN
-frame.counterAxisAlignItems = 'CENTER'; // cross axis: MIN | CENTER | MAX
-frame.itemSpacing = 12;                 // gap between children
-frame.paddingTop = 16;
-frame.paddingBottom = 16;
-frame.paddingLeft = 16;
-frame.paddingRight = 16;
-frame.primaryAxisSizingMode = 'AUTO';   // AUTO (hug) or FIXED
-frame.counterAxisSizingMode = 'AUTO';
+const frame = figma.createFrame()
+frame.layoutMode = 'VERTICAL' // or 'HORIZONTAL'
+frame.primaryAxisAlignItems = 'CENTER' // main axis: MIN | CENTER | MAX | SPACE_BETWEEN
+frame.counterAxisAlignItems = 'CENTER' // cross axis: MIN | CENTER | MAX
+frame.itemSpacing = 12 // gap between children
+frame.paddingTop = 16
+frame.paddingBottom = 16
+frame.paddingLeft = 16
+frame.paddingRight = 16
+frame.primaryAxisSizingMode = 'AUTO' // AUTO (hug) or FIXED
+frame.counterAxisSizingMode = 'AUTO'
 ```
 
 Children in auto-layout use `layoutAlign` and `layoutGrow`:
+
 ```js
-child.layoutAlign = 'STRETCH';  // fill container width (in vertical layout)
-child.layoutGrow = 1;           // expand to fill remaining space
+child.layoutAlign = 'STRETCH' // fill container width (in vertical layout)
+child.layoutGrow = 1 // expand to fill remaining space
 ```
 
 ## Export
 
 ```js
-const pngBytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } });
-const svgString = await node.exportAsync({ format: 'SVG' });
-const jpgBytes = await node.exportAsync({ format: 'JPG', constraint: { type: 'HEIGHT', value: 120 } });
-const pdfBytes = await node.exportAsync({ format: 'PDF' });
+const pngBytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } })
+const svgString = await node.exportAsync({ format: 'SVG' })
+const jpgBytes = await node.exportAsync({
+  format: 'JPG',
+  constraint: { type: 'HEIGHT', value: 120 },
+})
+const pdfBytes = await node.exportAsync({ format: 'PDF' })
 ```
 
 ## Storage & Persistence
 
 ```js
 // Per-plugin persistent storage (survives plugin restarts)
-await figma.clientStorage.setAsync('key', value);
-const value = await figma.clientStorage.getAsync('key');
-await figma.clientStorage.deleteAsync('key');
-const keys = await figma.clientStorage.keysAsync();
+await figma.clientStorage.setAsync('key', value)
+const value = await figma.clientStorage.getAsync('key')
+await figma.clientStorage.deleteAsync('key')
+const keys = await figma.clientStorage.keysAsync()
 ```
 
 Values must be JSON-serializable. Size limit: ~1MB per key.
@@ -274,9 +291,9 @@ Values must be JSON-serializable. Size limit: ~1MB per key.
 ## Notifications
 
 ```js
-figma.notify('Success message');
-figma.notify('Error occurred', { error: true });
-figma.notify('Processing...', { timeout: Infinity }); // Returns handle
+figma.notify('Success message')
+figma.notify('Error occurred', { error: true })
+figma.notify('Processing...', { timeout: Infinity }) // Returns handle
 // handle.cancel(); to dismiss
 ```
 
@@ -284,22 +301,23 @@ figma.notify('Processing...', { timeout: Infinity }); // Returns handle
 
 ```js
 // Read selection
-const selected = figma.currentPage.selection; // ReadonlyArray<SceneNode>
+const selected = figma.currentPage.selection // ReadonlyArray<SceneNode>
 
 // Set selection
-figma.currentPage.selection = [node1, node2];
+figma.currentPage.selection = [node1, node2]
 
 // Scroll to nodes
-figma.viewport.scrollAndZoomIntoView([node]);
+figma.viewport.scrollAndZoomIntoView([node])
 
 // Current viewport
-const { x, y, width, height } = figma.viewport.bounds;
-const zoom = figma.viewport.zoom;
+const { x, y, width, height } = figma.viewport.bounds
+const zoom = figma.viewport.zoom
 ```
 
 ## Best Practices
 
 ### Performance
+
 - **Batch reads before writes** — Figma flushes layout after writes; interleaving is expensive
 - **Use `findAllWithCriteria`** over `findAll` with callback for type-based filtering
 - **Limit `exportAsync`** — expensive; generate thumbnails at small sizes (e.g. `HEIGHT: 120`)
@@ -307,12 +325,14 @@ const zoom = figma.viewport.zoom;
 - **Send progress messages** to UI during long operations (e.g. every 10 nodes)
 
 ### Error Handling
+
 - Wrap all `await` calls in try/catch — nodes can be deleted, components missing, fonts unavailable
 - `getMainComponentAsync()` can return `null` for deleted/inaccessible components
 - `importComponentByKeyAsync` throws if the library isn't published or access is missing
 - Always verify `node.parent` exists before manipulating tree position
 
 ### UI Development
+
 - Use `themeColors: true` and Figma's CSS variables for light/dark theme support
 - Keep the UI single-file (`ui.html`) with inline CSS/JS for simplicity, or use a bundler for complex UIs
 - Design for the compact plugin panel — typical width 300–520px
@@ -320,27 +340,36 @@ const zoom = figma.viewport.zoom;
 - Handle `onmessage` defensively — always check `msg.type`
 
 ### Plugin Structure Pattern
+
 ```js
 // code.js — clean message router pattern
-figma.showUI(__html__, { width: 400, height: 500, themeColors: true });
+figma.showUI(__html__, { width: 400, height: 500, themeColors: true })
 
 figma.ui.onmessage = async (msg) => {
   switch (msg.type) {
-    case 'action-a': await handleA(msg); break;
-    case 'action-b': await handleB(msg); break;
-    case 'close': figma.closePlugin(); break;
+    case 'action-a':
+      await handleA(msg)
+      break
+    case 'action-b':
+      await handleB(msg)
+      break
+    case 'close':
+      figma.closePlugin()
+      break
   }
-};
+}
 ```
 
 ### TypeScript
 
 Use Figma's type definitions for full IntelliSense:
+
 ```bash
 npm install --save-dev @figma/plugin-typings
 ```
 
 `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -358,17 +387,17 @@ For UI code, create a separate `tsconfig.ui.json` with `"lib": ["ES2020", "DOM"]
 
 ```js
 // Get all local variables
-const variables = await figma.variables.getLocalVariablesAsync();
+const variables = await figma.variables.getLocalVariablesAsync()
 
 // Create a variable collection
-const collection = figma.variables.createVariableCollection('Colors');
+const collection = figma.variables.createVariableCollection('Colors')
 
 // Create a variable
-const variable = figma.variables.createVariable('primary', collection, 'COLOR');
-variable.setValueForMode(collection.modes[0].modeId, { r: 0.2, g: 0.4, b: 1 });
+const variable = figma.variables.createVariable('primary', collection, 'COLOR')
+variable.setValueForMode(collection.modes[0].modeId, { r: 0.2, g: 0.4, b: 1 })
 
 // Bind a variable to a node property
-node.setBoundVariable('fills', 0, variable);
+node.setBoundVariable('fills', 0, variable)
 ```
 
 ## Additional Resources

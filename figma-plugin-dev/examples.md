@@ -5,26 +5,33 @@
 Common pattern: scan the page for instances, display them in the UI, let the user pick targets, then swap.
 
 ### Sandbox (code.js)
+
 ```js
-figma.showUI(__html__, { width: 480, height: 560, themeColors: true });
+figma.showUI(__html__, { width: 480, height: 560, themeColors: true })
 
 figma.ui.onmessage = async (msg) => {
   switch (msg.type) {
-    case 'scan': await handleScan(); break;
-    case 'swap': await handleSwap(msg.mappings); break;
-    case 'close': figma.closePlugin(); break;
+    case 'scan':
+      await handleScan()
+      break
+    case 'swap':
+      await handleSwap(msg.mappings)
+      break
+    case 'close':
+      figma.closePlugin()
+      break
   }
-};
+}
 
 async function handleScan() {
-  const instances = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] });
-  const groups = {};
+  const instances = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] })
+  const groups = {}
 
   for (const node of instances) {
-    const comp = await node.getMainComponentAsync();
-    if (!comp) continue;
+    const comp = await node.getMainComponentAsync()
+    if (!comp) continue
 
-    const key = comp.key;
+    const key = comp.key
     if (!groups[key]) {
       groups[key] = {
         key,
@@ -32,83 +39,89 @@ async function handleScan() {
         setName: comp.parent?.type === 'COMPONENT_SET' ? comp.parent.name : null,
         isRemote: comp.remote,
         count: 0,
-      };
+      }
     }
-    groups[key].count++;
+    groups[key].count++
   }
 
   figma.ui.postMessage({
     type: 'scan-results',
     components: Object.values(groups),
-  });
+  })
 }
 
 async function handleSwap(mappings) {
-  let swapped = 0;
-  const importCache = {};
+  let swapped = 0
+  const importCache = {}
 
   // Pre-import targets
   for (const { targetKey } of mappings) {
-    if (!targetKey || importCache[targetKey]) continue;
+    if (!targetKey || importCache[targetKey]) continue
     try {
-      importCache[targetKey] = await figma.importComponentByKeyAsync(targetKey);
+      importCache[targetKey] = await figma.importComponentByKeyAsync(targetKey)
     } catch {
       try {
-        const set = await figma.importComponentSetByKeyAsync(targetKey);
-        importCache[targetKey] = set.children[0] || null;
-      } catch { importCache[targetKey] = null; }
+        const set = await figma.importComponentSetByKeyAsync(targetKey)
+        importCache[targetKey] = set.children[0] || null
+      } catch {
+        importCache[targetKey] = null
+      }
     }
   }
 
   // Build source→target map
-  const map = {};
+  const map = {}
   for (const { sourceKey, targetKey } of mappings) {
-    if (importCache[targetKey]) map[sourceKey] = importCache[targetKey];
+    if (importCache[targetKey]) map[sourceKey] = importCache[targetKey]
   }
 
   // Walk and swap
-  const all = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] });
+  const all = figma.currentPage.findAllWithCriteria({ types: ['INSTANCE'] })
   for (const node of all) {
-    const comp = await node.getMainComponentAsync();
+    const comp = await node.getMainComponentAsync()
     if (comp && map[comp.key]) {
-      node.swapComponent(map[comp.key]);
-      swapped++;
+      node.swapComponent(map[comp.key])
+      swapped++
     }
   }
 
-  figma.notify(`Swapped ${swapped} instance${swapped === 1 ? '' : 's'}`);
-  figma.ui.postMessage({ type: 'swap-done', swapped });
+  figma.notify(`Swapped ${swapped} instance${swapped === 1 ? '' : 's'}`)
+  figma.ui.postMessage({ type: 'swap-done', swapped })
 }
 ```
 
 ## Thumbnail Generation
 
 Export small previews for UI display:
+
 ```js
 // Base64 encoder for sandbox (no btoa available)
 function uint8ArrayToBase64(bytes) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let result = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  let result = ''
   for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i], b = bytes[i + 1] || 0, c = bytes[i + 2] || 0;
-    result += chars[a >> 2];
-    result += chars[((a & 3) << 4) | (b >> 4)];
-    result += (i + 1 < bytes.length) ? chars[((b & 15) << 2) | (c >> 6)] : '=';
-    result += (i + 2 < bytes.length) ? chars[c & 63] : '=';
+    const a = bytes[i],
+      b = bytes[i + 1] || 0,
+      c = bytes[i + 2] || 0
+    result += chars[a >> 2]
+    result += chars[((a & 3) << 4) | (b >> 4)]
+    result += i + 1 < bytes.length ? chars[((b & 15) << 2) | (c >> 6)] : '='
+    result += i + 2 < bytes.length ? chars[c & 63] : '='
   }
-  return result;
+  return result
 }
 
 async function generateThumbnail(node) {
   const bytes = await node.exportAsync({
     format: 'PNG',
     constraint: { type: 'HEIGHT', value: 120 },
-  });
-  return uint8ArrayToBase64(bytes);
+  })
+  return uint8ArrayToBase64(bytes)
 }
 ```
 
 Display in UI:
+
 ```html
 <img src="data:image/png;base64,${base64String}" />
 ```
@@ -116,97 +129,103 @@ Display in UI:
 ## Detached Instance Detection
 
 Find frames that were detached from components:
+
 ```js
 function findDetached(node) {
-  const results = [];
+  const results = []
   if ('detachedInfo' in node && node.detachedInfo) {
     results.push({
       id: node.id,
       name: node.name,
       componentKey: node.detachedInfo.componentKey || null,
       componentId: node.detachedInfo.componentId || null,
-    });
+    })
   }
   if ('children' in node) {
-    for (const child of node.children) results.push(...findDetached(child));
+    for (const child of node.children) results.push(...findDetached(child))
   }
-  return results;
+  return results
 }
 
-const detached = findDetached(figma.currentPage);
+const detached = findDetached(figma.currentPage)
 ```
 
 ## Batch Text Replacement
 
 Replace text across the file:
+
 ```js
 async function replaceText(find, replace) {
-  const textNodes = figma.currentPage.findAllWithCriteria({ types: ['TEXT'] });
-  let count = 0;
+  const textNodes = figma.currentPage.findAllWithCriteria({ types: ['TEXT'] })
+  let count = 0
 
   for (const node of textNodes) {
-    if (!node.characters.includes(find)) continue;
+    if (!node.characters.includes(find)) continue
 
     // Load ALL fonts used in this text node
-    const fonts = node.getRangeAllFontNames(0, node.characters.length);
+    const fonts = node.getRangeAllFontNames(0, node.characters.length)
     for (const font of fonts) {
-      await figma.loadFontAsync(font);
+      await figma.loadFontAsync(font)
     }
 
-    node.characters = node.characters.replaceAll(find, replace);
-    count++;
+    node.characters = node.characters.replaceAll(find, replace)
+    count++
   }
-  return count;
+  return count
 }
 ```
 
 ## Color Audit / Lint
 
 Find all unique colors used across the page:
+
 ```js
 function extractColors(node) {
-  const colors = new Set();
+  const colors = new Set()
   if ('fills' in node && Array.isArray(node.fills)) {
     for (const fill of node.fills) {
       if (fill.type === 'SOLID' && fill.visible !== false) {
-        const { r, g, b } = fill.color;
-        colors.add(JSON.stringify({ r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) }));
+        const { r, g, b } = fill.color
+        colors.add(
+          JSON.stringify({ r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) })
+        )
       }
     }
   }
   if ('children' in node) {
     for (const child of node.children) {
-      for (const c of extractColors(child)) colors.add(c);
+      for (const c of extractColors(child)) colors.add(c)
     }
   }
-  return colors;
+  return colors
 }
 
-const allColors = extractColors(figma.currentPage);
-const parsed = [...allColors].map(c => JSON.parse(c));
+const allColors = extractColors(figma.currentPage)
+const parsed = [...allColors].map((c) => JSON.parse(c))
 ```
 
 ## Selection-Based Plugin
 
 Operate on what the user has selected:
+
 ```js
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'apply') {
-    const selection = figma.currentPage.selection;
+    const selection = figma.currentPage.selection
     if (selection.length === 0) {
-      figma.notify('Please select at least one layer', { error: true });
-      return;
+      figma.notify('Please select at least one layer', { error: true })
+      return
     }
 
     for (const node of selection) {
       if ('fills' in node) {
-        node.fills = [{ type: 'SOLID', color: msg.color }];
+        node.fills = [{ type: 'SOLID', color: msg.color }]
       }
     }
 
-    figma.notify(`Applied to ${selection.length} layer${selection.length > 1 ? 's' : ''}`);
+    figma.notify(`Applied to ${selection.length} layer${selection.length > 1 ? 's' : ''}`)
   }
-};
+}
 ```
 
 ## UI Pattern: Figma-Native Look
@@ -214,105 +233,120 @@ figma.ui.onmessage = async (msg) => {
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    height: 100%;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 11px;
-    /* Figma theme variables (when themeColors: true) */
-    color: var(--figma-color-text, #333);
-    background: var(--figma-color-bg, #fff);
-  }
+  <head>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        font-family:
+          Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        font-size: 11px;
+        /* Figma theme variables (when themeColors: true) */
+        color: var(--figma-color-text, #333);
+        background: var(--figma-color-bg, #fff);
+      }
 
-  /* Figma-style button */
-  .btn-primary {
-    background: var(--figma-color-bg-brand, #0D99FF);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-  }
-  .btn-primary:hover { opacity: 0.9; }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+      /* Figma-style button */
+      .btn-primary {
+        background: var(--figma-color-bg-brand, #0d99ff);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+      .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
 
-  /* Figma-style input */
-  .input {
-    width: 100%;
-    padding: 7px 8px;
-    border: 1px solid var(--figma-color-border, #e5e5e5);
-    border-radius: 4px;
-    font-size: 11px;
-    background: var(--figma-color-bg, #fff);
-    color: var(--figma-color-text, #333);
-    outline: none;
-  }
-  .input:focus {
-    border-color: var(--figma-color-border-brand, #0D99FF);
-    box-shadow: 0 0 0 1px var(--figma-color-border-brand, #0D99FF);
-  }
+      /* Figma-style input */
+      .input {
+        width: 100%;
+        padding: 7px 8px;
+        border: 1px solid var(--figma-color-border, #e5e5e5);
+        border-radius: 4px;
+        font-size: 11px;
+        background: var(--figma-color-bg, #fff);
+        color: var(--figma-color-text, #333);
+        outline: none;
+      }
+      .input:focus {
+        border-color: var(--figma-color-border-brand, #0d99ff);
+        box-shadow: 0 0 0 1px var(--figma-color-border-brand, #0d99ff);
+      }
 
-  /* Section header */
-  .section-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--figma-color-text-secondary, #999);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-  }
+      /* Section header */
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--figma-color-text-secondary, #999);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
 
-  /* Divider */
-  .divider {
-    height: 1px;
-    background: var(--figma-color-border, #e5e5e5);
-    margin: 12px 0;
-  }
+      /* Divider */
+      .divider {
+        height: 1px;
+        background: var(--figma-color-border, #e5e5e5);
+        margin: 12px 0;
+      }
 
-  /* Scrollable content area */
-  .content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-  }
+      /* Scrollable content area */
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
 
-  /* Footer with sticky action */
-  .footer {
-    padding: 12px;
-    border-top: 1px solid var(--figma-color-border, #e5e5e5);
-    flex-shrink: 0;
-  }
-</style>
-</head>
-<body style="display: flex; flex-direction: column;">
-  <div class="content">
-    <!-- Plugin content here -->
-  </div>
-  <div class="footer">
-    <button class="btn-primary" id="action">Apply</button>
-  </div>
+      /* Footer with sticky action */
+      .footer {
+        padding: 12px;
+        border-top: 1px solid var(--figma-color-border, #e5e5e5);
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body style="display: flex; flex-direction: column;">
+    <div class="content">
+      <!-- Plugin content here -->
+    </div>
+    <div class="footer">
+      <button class="btn-primary" id="action">Apply</button>
+    </div>
 
-  <script>
-    // Send messages to sandbox
-    function post(type, data = {}) {
-      parent.postMessage({ pluginMessage: { type, ...data } }, '*');
-    }
+    <script>
+      // Send messages to sandbox
+      function post(type, data = {}) {
+        parent.postMessage({ pluginMessage: { type, ...data } }, '*')
+      }
 
-    // Receive messages from sandbox
-    window.onmessage = (event) => {
-      const msg = event.data.pluginMessage;
-      if (!msg) return;
-      // Handle message types...
-    };
+      // Receive messages from sandbox
+      window.onmessage = (event) => {
+        const msg = event.data.pluginMessage
+        if (!msg) return
+        // Handle message types...
+      }
 
-    document.getElementById('action').onclick = () => post('apply');
-  </script>
-</body>
+      document.getElementById('action').onclick = () => post('apply')
+    </script>
+  </body>
 </html>
 ```
 
@@ -324,7 +358,7 @@ For long operations, report progress to keep the UI responsive:
 // Sandbox
 async function processNodes(nodes) {
   for (let i = 0; i < nodes.length; i++) {
-    await processOneNode(nodes[i]);
+    await processOneNode(nodes[i])
 
     // Report every 10 nodes or on the last one
     if (i % 10 === 0 || i === nodes.length - 1) {
@@ -332,7 +366,7 @@ async function processNodes(nodes) {
         type: 'progress',
         current: i + 1,
         total: nodes.length,
-      });
+      })
     }
   }
 }
@@ -348,15 +382,15 @@ async function processNodes(nodes) {
 </div>
 
 <script>
-window.onmessage = (event) => {
-  const msg = event.data.pluginMessage;
-  if (msg.type === 'progress') {
-    document.getElementById('progress').style.display = 'block';
-    const pct = Math.round((msg.current / msg.total) * 100);
-    document.getElementById('fill').style.width = pct + '%';
-    document.getElementById('progress-text').textContent = `${msg.current}/${msg.total}`;
+  window.onmessage = (event) => {
+    const msg = event.data.pluginMessage
+    if (msg.type === 'progress') {
+      document.getElementById('progress').style.display = 'block'
+      const pct = Math.round((msg.current / msg.total) * 100)
+      document.getElementById('fill').style.width = pct + '%'
+      document.getElementById('progress-text').textContent = `${msg.current}/${msg.total}`
+    }
   }
-};
 </script>
 ```
 
@@ -365,38 +399,38 @@ window.onmessage = (event) => {
 ```js
 // In ui.html — fetch all components from a library file
 async function getLibraryComponents(fileKey, token) {
-  const resp = await fetch(
-    `https://api.figma.com/v1/files/${fileKey}/components`,
-    { headers: { 'X-Figma-Token': token } }
-  );
-  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
-  const data = await resp.json();
-  return data.meta.components; // Array of ComponentMetadata
+  const resp = await fetch(`https://api.figma.com/v1/files/${fileKey}/components`, {
+    headers: { 'X-Figma-Token': token },
+  })
+  if (!resp.ok) throw new Error(`API error: ${resp.status}`)
+  const data = await resp.json()
+  return data.meta.components // Array of ComponentMetadata
 }
 
 // Fetch all team components with pagination
 async function getTeamComponents(teamId, token) {
-  let components = [];
-  let cursor = null;
+  let components = []
+  let cursor = null
 
   do {
-    const url = new URL(`https://api.figma.com/v1/teams/${teamId}/components`);
-    url.searchParams.set('page_size', '100');
-    if (cursor) url.searchParams.set('after', cursor);
+    const url = new URL(`https://api.figma.com/v1/teams/${teamId}/components`)
+    url.searchParams.set('page_size', '100')
+    if (cursor) url.searchParams.set('after', cursor)
 
-    const resp = await fetch(url, { headers: { 'X-Figma-Token': token } });
-    const data = await resp.json();
-    components.push(...data.meta.components);
-    cursor = data.meta.cursor || null;
-  } while (cursor);
+    const resp = await fetch(url, { headers: { 'X-Figma-Token': token } })
+    const data = await resp.json()
+    components.push(...data.meta.components)
+    cursor = data.meta.cursor || null
+  } while (cursor)
 
-  return components;
+  return components
 }
 ```
 
 ## Plugin with TypeScript (Build Setup)
 
 ### Directory structure
+
 ```
 plugin/
 ├── manifest.json
@@ -411,6 +445,7 @@ plugin/
 ```
 
 ### package.json
+
 ```json
 {
   "scripts": {
@@ -425,6 +460,7 @@ plugin/
 ```
 
 ### tsconfig.json
+
 ```json
 {
   "compilerOptions": {

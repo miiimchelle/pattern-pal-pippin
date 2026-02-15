@@ -1,19 +1,23 @@
-import type { RuleConfig } from '../hooks/usePluginMessages';
+import type { RuleConfig } from '../hooks/usePluginMessages'
 
 interface Props {
-  rules: RuleConfig[];
-  onSave: (rules: RuleConfig[]) => void;
-  onBack: () => void;
+  rules: RuleConfig[]
+  onSave: (rules: RuleConfig[]) => void
+  onBack: () => void
 }
 
 export function RulesPanel({ rules, onSave, onBack }: Props) {
   const handleToggle = (id: string) => {
-    const updated = rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r));
-    onSave(updated);
-  };
+    const updated = rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
+    onSave(updated)
+  }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body" role="region" aria-label="Design rules configuration">
+    <div
+      className="flex-1 flex flex-col overflow-auto pattern-pal-body"
+      role="region"
+      aria-label="Design rules configuration"
+    >
       <div className="px-4 pt-1 pb-4 flex flex-col gap-3">
         <h2 className="violations-header" style={{ marginBottom: 0 }}>
           Design Rules
@@ -37,7 +41,9 @@ export function RulesPanel({ rules, onSave, onBack }: Props) {
               />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-700">{rule.name}</div>
-                <div id={`rule-desc-${rule.id}`} className="text-xs text-gray-400">{rule.description}</div>
+                <div id={`rule-desc-${rule.id}`} className="text-xs text-gray-400">
+                  {rule.description}
+                </div>
               </div>
             </label>
           ))}
@@ -48,5 +54,5 @@ export function RulesPanel({ rules, onSave, onBack }: Props) {
         </button>
       </div>
     </div>
-  );
+  )
 }

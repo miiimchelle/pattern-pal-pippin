@@ -5,6 +5,7 @@ The REST API is used from the **UI iframe** (via `fetch`) or external tools. It 
 ## Authentication
 
 ### Personal Access Token (PAT)
+
 ```
 GET https://api.figma.com/v1/files/:file_key
 Headers:
@@ -12,6 +13,7 @@ Headers:
 ```
 
 ### OAuth 2.0
+
 ```
 Authorization: Bearer <oauth-token>
 ```
@@ -47,6 +49,7 @@ Returns the full document tree.
 ```
 
 Response shape:
+
 ```json
 {
   "name": "File Name",
@@ -56,11 +59,19 @@ Response shape:
     "id": "0:0",
     "name": "Document",
     "type": "DOCUMENT",
-    "children": [/* pages */]
+    "children": [
+      /* pages */
+    ]
   },
-  "components": { /* key -> ComponentMetadata */ },
-  "componentSets": { /* key -> ComponentSetMetadata */ },
-  "styles": { /* key -> StyleMetadata */ }
+  "components": {
+    /* key -> ComponentMetadata */
+  },
+  "componentSets": {
+    /* key -> ComponentSetMetadata */
+  },
+  "styles": {
+    /* key -> StyleMetadata */
+  }
 }
 ```
 
@@ -83,6 +94,7 @@ Render nodes as images (PNG, JPG, SVG, PDF).
 ```
 
 Response:
+
 ```json
 {
   "images": {
@@ -118,6 +130,7 @@ Published team library component sets. Paginated.
 Published team library styles. Paginated.
 
 Component metadata shape:
+
 ```json
 {
   "key": "abc123...",
@@ -140,6 +153,7 @@ Component metadata shape:
 
 **GET /v1/files/:file_key/comments**
 **POST /v1/files/:file_key/comments**
+
 ```json
 {
   "message": "Comment text",
@@ -170,16 +184,25 @@ Published variables.
 
 **POST /v1/files/:file_key/variables**
 Create/update/delete variables. Body:
+
 ```json
 {
-  "variableCollections": [
-    { "action": "CREATE", "name": "Colors", "id": "temp-id" }
-  ],
+  "variableCollections": [{ "action": "CREATE", "name": "Colors", "id": "temp-id" }],
   "variableModeValues": [
-    { "variableId": "VariableID:123", "modeId": "ModeID:456", "value": { "r": 0.2, "g": 0.4, "b": 1, "a": 1 } }
+    {
+      "variableId": "VariableID:123",
+      "modeId": "ModeID:456",
+      "value": { "r": 0.2, "g": 0.4, "b": 1, "a": 1 }
+    }
   ],
   "variables": [
-    { "action": "CREATE", "name": "primary", "variableCollectionId": "temp-id", "resolvedType": "COLOR", "id": "temp-var-id" }
+    {
+      "action": "CREATE",
+      "name": "primary",
+      "variableCollectionId": "temp-id",
+      "resolvedType": "COLOR",
+      "id": "temp-var-id"
+    }
   ]
 }
 ```
@@ -194,6 +217,7 @@ Create/update/delete variables. Body:
 ### Webhooks
 
 **POST /v2/webhooks**
+
 ```json
 {
   "event_type": "FILE_UPDATE",
@@ -205,6 +229,7 @@ Create/update/delete variables. Body:
 ```
 
 Event types:
+
 - `FILE_UPDATE` — File saved
 - `FILE_DELETE` — File deleted
 - `FILE_VERSION_UPDATE` — New version created
@@ -222,10 +247,11 @@ Event types:
 Query params: `?plugin_id=xxx&user_id=yyy`
 
 Response:
+
 ```json
 {
   "payment": {
-    "status": "PAID",     // 'PAID' | 'UNPAID' | 'TRIAL'
+    "status": "PAID", // 'PAID' | 'UNPAID' | 'TRIAL'
     "date": "2025-01-01"
   }
 }
@@ -238,43 +264,44 @@ Response:
 async function fetchFigmaAPI(endpoint, token) {
   const resp = await fetch(`https://api.figma.com${endpoint}`, {
     headers: { 'X-Figma-Token': token },
-  });
+  })
   if (!resp.ok) {
     if (resp.status === 429) {
       // Rate limited — wait and retry
-      const retryAfter = parseInt(resp.headers.get('Retry-After') || '60', 10);
-      await new Promise(r => setTimeout(r, retryAfter * 1000));
-      return fetchFigmaAPI(endpoint, token);
+      const retryAfter = parseInt(resp.headers.get('Retry-After') || '60', 10)
+      await new Promise((r) => setTimeout(r, retryAfter * 1000))
+      return fetchFigmaAPI(endpoint, token)
     }
-    throw new Error(`Figma API ${resp.status}: ${resp.statusText}`);
+    throw new Error(`Figma API ${resp.status}: ${resp.statusText}`)
   }
-  return resp.json();
+  return resp.json()
 }
 
 // Usage
-const fileData = await fetchFigmaAPI(`/v1/files/${fileKey}?depth=1`, token);
-const components = await fetchFigmaAPI(`/v1/files/${fileKey}/components`, token);
+const fileData = await fetchFigmaAPI(`/v1/files/${fileKey}?depth=1`, token)
+const components = await fetchFigmaAPI(`/v1/files/${fileKey}/components`, token)
 ```
 
 ## Token Storage Pattern
 
 ```js
 // code.js — load and save token
-(async () => {
-  const token = await figma.clientStorage.getAsync('figma_pat');
-  figma.ui.postMessage({ type: 'token-loaded', token: token || '' });
-})();
+;(async () => {
+  const token = await figma.clientStorage.getAsync('figma_pat')
+  figma.ui.postMessage({ type: 'token-loaded', token: token || '' })
+})()
 
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'save-token') {
-    await figma.clientStorage.setAsync('figma_pat', msg.token);
+    await figma.clientStorage.setAsync('figma_pat', msg.token)
   }
-};
+}
 ```
 
 ## Pagination
 
 Team endpoints use cursor-based pagination:
+
 ```
 GET /v1/teams/:id/components?page_size=50
 → { "meta": { "components": [...] }, "cursor": "abc123" }

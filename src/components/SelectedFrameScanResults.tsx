@@ -1,33 +1,33 @@
-import type { SelectedFrameScanResult } from '../hooks/usePluginMessages';
-import { TeamFileResults } from './TeamFileResults';
+import type { SelectedFrameScanResult } from '../hooks/usePluginMessages'
+import { TeamFileResults } from './TeamFileResults'
 
 function similarityBadgeClass(sim: number): string {
-  if (sim >= 80) return 'badge bg-green-50 text-green-700!';
-  if (sim >= 60) return 'badge bg-blue-50 text-blue-700!';
-  if (sim >= 40) return 'badge bg-amber-50 text-amber-700!';
-  return 'badge';
+  if (sim >= 80) return 'badge bg-green-50 text-green-700!'
+  if (sim >= 60) return 'badge bg-blue-50 text-blue-700!'
+  if (sim >= 40) return 'badge bg-amber-50 text-amber-700!'
+  return 'badge'
 }
 
 function severityBadgeClass(severity: 'error' | 'warning' | 'info'): string {
-  if (severity === 'error') return 'badge bg-red-50 text-red-700!';
-  if (severity === 'warning') return 'badge bg-amber-50 text-amber-700!';
-  return 'badge bg-blue-50 text-blue-700!';
+  if (severity === 'error') return 'badge bg-red-50 text-red-700!'
+  if (severity === 'warning') return 'badge bg-amber-50 text-amber-700!'
+  return 'badge bg-blue-50 text-blue-700!'
 }
 
 function buildLibraryUrl(fileKey: string, nodeId: string): string {
-  const encodedNodeId = nodeId.replace(':', '-');
-  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`;
+  const encodedNodeId = nodeId.replace(':', '-')
+  return `https://www.figma.com/design/${fileKey}?node-id=${encodedNodeId}`
 }
 
 interface Props {
-  result: SelectedFrameScanResult;
-  onOpenInFigma: (url: string) => void;
-  onZoomToFrame?: (frameId: string) => void;
+  result: SelectedFrameScanResult
+  onOpenInFigma: (url: string) => void
+  onZoomToFrame?: (frameId: string) => void
 }
 
 export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame }: Props) {
-  const { selectedFrame, teamFileResults, libraryMatches } = result;
-  const ruleIssues = result.ruleIssues ?? [];
+  const { selectedFrame, teamFileResults, libraryMatches } = result
+  const ruleIssues = result.ruleIssues ?? []
 
   return (
     <div className="flex flex-col gap-4 p-4" aria-label={`Scan results for ${selectedFrame.name}`}>
@@ -65,7 +65,8 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') onOpenInFigma(buildLibraryUrl(match.fileKey, match.componentId));
+                  if (e.key === 'Enter' || e.key === ' ')
+                    onOpenInFigma(buildLibraryUrl(match.fileKey, match.componentId))
                 }}
               >
                 <div className="frame-name">
@@ -74,9 +75,7 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
                     {match.similarity}% match
                   </span>
                 </div>
-                <div className="pattern-pal-message">
-                  Library component from design system
-                </div>
+                <div className="pattern-pal-message">Library component from design system</div>
               </div>
             ))}
           </div>
@@ -99,18 +98,14 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') onZoomToFrame?.(issue.frameId);
+                  if (e.key === 'Enter' || e.key === ' ') onZoomToFrame?.(issue.frameId)
                 }}
               >
                 <div className="frame-name">
                   <span>{issue.frameName}</span>
-                  <span className={severityBadgeClass(issue.severity)}>
-                    {issue.ruleName}
-                  </span>
+                  <span className={severityBadgeClass(issue.severity)}>{issue.ruleName}</span>
                 </div>
-                <div className="pattern-pal-message">
-                  {issue.message}
-                </div>
+                <div className="pattern-pal-message">{issue.message}</div>
               </div>
             ))}
           </div>
@@ -126,5 +121,5 @@ export function SelectedFrameScanResults({ result, onOpenInFigma, onZoomToFrame 
         </div>
       )}
     </div>
-  );
+  )
 }

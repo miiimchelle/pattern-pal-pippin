@@ -1,17 +1,17 @@
-import type { PatternGroup } from '../hooks/usePluginMessages';
-import { MatchDetails } from './MatchDetails';
+import type { PatternGroup } from '../hooks/usePluginMessages'
+import { MatchDetails } from './MatchDetails'
 
 function consistencyBadgeClass(c: number): string {
-  if (c >= 90) return 'badge bg-green-50 text-green-700!';
-  if (c >= 75) return 'badge bg-blue-50 text-blue-700!';
-  if (c >= 60) return 'badge bg-amber-50 text-amber-700!';
-  return 'badge';
+  if (c >= 90) return 'badge bg-green-50 text-green-700!'
+  if (c >= 75) return 'badge bg-blue-50 text-blue-700!'
+  if (c >= 60) return 'badge bg-amber-50 text-amber-700!'
+  return 'badge'
 }
 
 interface Props {
-  groups: PatternGroup[];
-  onFrameClick: (frameId: string, fileKey: string | undefined, group: PatternGroup) => void;
-  onOpenInFigma: (url: string) => void;
+  groups: PatternGroup[]
+  onFrameClick: (frameId: string, fileKey: string | undefined, group: PatternGroup) => void
+  onOpenInFigma: (url: string) => void
 }
 
 export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
@@ -22,7 +22,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
         <div className="empty-state-title">No patterns found</div>
         <div className="empty-state-description">Try a page with more frames.</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -33,7 +33,7 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
       </div>
       <div className="violations-container">
         {groups.map((group) => {
-          const fileCount = new Set(group.frames.map((f) => f.fileKey || '__local__')).size;
+          const fileCount = new Set(group.frames.map((f) => f.fileKey || '__local__')).size
           return (
             <div key={group.fingerprint} className="violation">
               {/* Group header */}
@@ -60,7 +60,10 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
                     onClick={() => onFrameClick(frame.id, frame.fileKey, group)}
                     className="text-left px-2 py-1 text-sm hover:bg-blue-50 rounded transition-colors flex justify-between items-center"
                   >
-                    <span className="truncate flex items-center gap-1.5" style={{ fontWeight: 500, fontSize: 13, color: '#09090b' }}>
+                    <span
+                      className="truncate flex items-center gap-1.5"
+                      style={{ fontWeight: 500, fontSize: 13, color: '#09090b' }}
+                    >
                       {frame.name}
                       {frame.fileName && (
                         <span className="badge bg-indigo-50 text-indigo-600!">
@@ -84,9 +87,9 @@ export function PatternResults({ groups, onFrameClick, onOpenInFigma }: Props) {
                 onOpenInFigma={onOpenInFigma}
               />
             </div>
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }

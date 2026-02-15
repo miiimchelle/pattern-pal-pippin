@@ -76,14 +76,26 @@ describe('App', () => {
 
   it('header buttons have aria-pressed attribute', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('button', { name: 'Design Rules' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    expect(screen.getByRole('button', { name: 'Design Rules' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
   })
 
   it('switches aria-selected when tab changes', async () => {
     render(<App />)
     await userEvent.click(screen.getByRole('tab', { name: 'Scan team files' }))
-    expect(screen.getByRole('tab', { name: 'Scan frame' })).toHaveAttribute('aria-selected', 'false')
-    expect(screen.getByRole('tab', { name: 'Scan team files' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Scan frame' })).toHaveAttribute(
+      'aria-selected',
+      'false'
+    )
+    expect(screen.getByRole('tab', { name: 'Scan team files' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
   })
 })

@@ -60,17 +60,17 @@ This produces:
 
 ## Scripts
 
-| Command | Description |
-|--------|-------------|
-| `npm run dev` | Start Vite dev server (UI only; for local UI dev) |
-| `npm run build` | Build UI + plugin code for production |
-| `npm run watch` | Watch and rebuild UI and plugin code |
-| `npm run preview` | Preview production UI build |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format with Prettier |
-| `npm run format:check` | Check formatting |
-| `npm test` | Run tests (watch) |
-| `npm run test:run` | Run tests once |
+| Command                | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `npm run dev`          | Start Vite dev server (UI only; for local UI dev) |
+| `npm run build`        | Build UI + plugin code for production             |
+| `npm run watch`        | Watch and rebuild UI and plugin code              |
+| `npm run preview`      | Preview production UI build                       |
+| `npm run lint`         | Run ESLint                                        |
+| `npm run format`       | Format with Prettier                              |
+| `npm run format:check` | Check formatting                                  |
+| `npm test`             | Run tests (watch)                                 |
+| `npm run test:run`     | Run tests once                                    |
 
 ## Project structure
 

@@ -20,6 +20,7 @@ import {
   DEFAULT_RULES,
   type StructuralShape,
   type FrameFingerprint,
+  type LibraryComponent,
   type LibraryComponentFingerprint,
   type ApiNode,
 } from './core'
@@ -62,7 +63,9 @@ function makeFrame(overrides: Partial<FrameFingerprint> = {}): FrameFingerprint 
   }
 }
 
-function makeLibFp(overrides: Partial<LibraryComponentFingerprint> = {}): LibraryComponentFingerprint {
+function makeLibFp(
+  overrides: Partial<LibraryComponentFingerprint> = {}
+): LibraryComponentFingerprint {
   return {
     id: 'lib-1',
     name: 'LibCard',
@@ -270,7 +273,13 @@ describe('computeStructuralSimilarity', () => {
 
   it('produces score between 0 and 100', () => {
     const a = makeShape({ width: 1, height: 1, childCount: 0, maxDepth: 0, componentIds: [] })
-    const b = makeShape({ width: 1000, height: 2000, childCount: 50, maxDepth: 10, componentIds: ['x'] })
+    const b = makeShape({
+      width: 1000,
+      height: 2000,
+      childCount: 50,
+      maxDepth: 10,
+      componentIds: ['x'],
+    })
     const score = computeStructuralSimilarity(a, b)
     expect(score).toBeGreaterThanOrEqual(0)
     expect(score).toBeLessThanOrEqual(100)
@@ -281,11 +290,7 @@ describe('computeStructuralSimilarity', () => {
 
 describe('clusterFrames', () => {
   it('groups identical frames together', () => {
-    const frames = [
-      makeFrame({ id: '1' }),
-      makeFrame({ id: '2' }),
-      makeFrame({ id: '3' }),
-    ]
+    const frames = [makeFrame({ id: '1' }), makeFrame({ id: '2' }), makeFrame({ id: '3' })]
     const clusters = clusterFrames(frames, 60)
     expect(clusters).toHaveLength(1)
     expect(clusters[0].frames).toHaveLength(3)
@@ -298,8 +303,28 @@ describe('clusterFrames', () => {
       makeFrame({ id: '2', width: 200, height: 300, layoutMode: 'VERTICAL', componentIds: ['c1'] }),
     ]
     const navFrames = [
-      makeFrame({ id: '3', width: 1200, height: 60, layoutMode: 'HORIZONTAL', childCount: 15, maxDepth: 1, componentIds: ['c9'], childTypeDistribution: { INSTANCE: 15 }, aspectRatio: 20 }),
-      makeFrame({ id: '4', width: 1200, height: 60, layoutMode: 'HORIZONTAL', childCount: 15, maxDepth: 1, componentIds: ['c9'], childTypeDistribution: { INSTANCE: 15 }, aspectRatio: 20 }),
+      makeFrame({
+        id: '3',
+        width: 1200,
+        height: 60,
+        layoutMode: 'HORIZONTAL',
+        childCount: 15,
+        maxDepth: 1,
+        componentIds: ['c9'],
+        childTypeDistribution: { INSTANCE: 15 },
+        aspectRatio: 20,
+      }),
+      makeFrame({
+        id: '4',
+        width: 1200,
+        height: 60,
+        layoutMode: 'HORIZONTAL',
+        childCount: 15,
+        maxDepth: 1,
+        componentIds: ['c9'],
+        childTypeDistribution: { INSTANCE: 15 },
+        aspectRatio: 20,
+      }),
     ]
     const clusters = clusterFrames([...cardFrames, ...navFrames], 60)
     expect(clusters.length).toBeGreaterThanOrEqual(2)
@@ -308,7 +333,15 @@ describe('clusterFrames', () => {
   it('filters out singleton clusters', () => {
     const frames = [
       makeFrame({ id: '1', width: 100, componentIds: ['a'] }),
-      makeFrame({ id: '2', width: 500, componentIds: ['b'], childCount: 20, maxDepth: 8, layoutMode: 'HORIZONTAL', childTypeDistribution: { INSTANCE: 20 } }),
+      makeFrame({
+        id: '2',
+        width: 500,
+        componentIds: ['b'],
+        childCount: 20,
+        maxDepth: 8,
+        layoutMode: 'HORIZONTAL',
+        childTypeDistribution: { INSTANCE: 20 },
+      }),
     ]
     const clusters = clusterFrames(frames, 90)
     // Each frame is too different at threshold 90, so they form singletons which are filtered
@@ -324,14 +357,9 @@ describe('clusterFrames', () => {
   })
 
   it('consistency is average of pairwise scores', () => {
-    const frames = [
-      makeFrame({ id: '1' }),
-      makeFrame({ id: '2' }),
-    ]
+    const frames = [makeFrame({ id: '1' }), makeFrame({ id: '2' })]
     const clusters = clusterFrames(frames, 60)
-    expect(clusters[0].consistency).toBe(
-      computeSimilarity(frames[0], frames[1])
-    )
+    expect(clusters[0].consistency).toBe(computeSimilarity(frames[0], frames[1]))
   })
 })
 
@@ -403,10 +431,7 @@ describe('getApiNodeDepth', () => {
 
   it('returns correct depth for nested tree', () => {
     const tree: ApiNode = {
-      children: [
-        { children: [{ children: [{ type: 'TEXT' }] }] },
-        { type: 'TEXT' },
-      ],
+      children: [{ children: [{ children: [{ type: 'TEXT' }] }] }, { type: 'TEXT' }],
     }
     expect(getApiNodeDepth(tree)).toBe(3)
   })
@@ -485,7 +510,7 @@ describe('extractComponentNodes', () => {
     }
     const comps: { id: string; name: string }[] = []
     const fps: LibraryComponentFingerprint[] = []
-    extractComponentNodes(tree, 'fk', 'f', 'url', comps as any, fps)
+    extractComponentNodes(tree, 'fk', 'f', 'url', comps as LibraryComponent[], fps)
     expect(comps).toHaveLength(1)
     expect(comps[0].name).toBe('Button')
     expect(fps).toHaveLength(1)
@@ -503,7 +528,7 @@ describe('extractComponentNodes', () => {
     }
     const comps: { id: string; name: string }[] = []
     const fps: LibraryComponentFingerprint[] = []
-    extractComponentNodes(tree, 'fk', 'f', 'url', comps as any, fps)
+    extractComponentNodes(tree, 'fk', 'f', 'url', comps as LibraryComponent[], fps)
     // Should only have the set, not its variant children
     expect(comps).toHaveLength(1)
     expect(comps[0].name).toBe('ButtonSet')
@@ -521,7 +546,7 @@ describe('extractComponentNodes', () => {
     }
     const comps: { id: string; name: string }[] = []
     const fps: LibraryComponentFingerprint[] = []
-    extractComponentNodes(tree, 'fk', 'f', 'url', comps as any, fps)
+    extractComponentNodes(tree, 'fk', 'f', 'url', comps as LibraryComponent[], fps)
     expect(comps).toHaveLength(1)
     expect(comps[0].name).toBe('Deep')
   })
@@ -568,7 +593,12 @@ describe('extractFrameFingerprints', () => {
           type: 'CANVAS',
           children: [
             { type: 'COMPONENT', id: 'c1', name: 'NotAFrame' },
-            { type: 'FRAME', id: 'f1', name: 'RealFrame', absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 100 } },
+            {
+              type: 'FRAME',
+              id: 'f1',
+              name: 'RealFrame',
+              absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 100 },
+            },
           ],
         },
       ],

@@ -21,12 +21,9 @@ import {
   extractFileKey,
   isButtonComponentName,
   HIERARCHY_VARIANT_KEYS,
-  computeStructuralSimilarity,
   computeSimilarity,
   findLibraryMatches,
   clusterFrames,
-  getApiNodeDepth,
-  buildApiFingerprint,
   extractComponentNodes,
   extractFrameFingerprints,
   getRelativeLuminance,
@@ -151,9 +148,7 @@ async function checkPrimaryButtonPerFrame(): Promise<{
   issues: RuleIssue[]
 }> {
   const issues: RuleIssue[] = []
-  const frames = figma.currentPage.children.filter(
-    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
-  )
+  const frames = figma.currentPage.children.filter((c): c is FrameNode => c.type === 'FRAME')
   const instanceNamesSeen: string[] = []
 
   for (const frame of frames) {
@@ -182,9 +177,7 @@ async function checkPrimaryButtonPerFrame(): Promise<{
 
 function checkTextStyleConsistency(): RuleIssue[] {
   const issues: RuleIssue[] = []
-  const frames = figma.currentPage.children.filter(
-    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
-  )
+  const frames = figma.currentPage.children.filter((c): c is FrameNode => c.type === 'FRAME')
 
   for (const frame of frames) {
     const unstyledNodes: SceneNode[] = []
@@ -226,9 +219,7 @@ function checkTextStyleConsistency(): RuleIssue[] {
 
 function checkSpacingConsistency(): RuleIssue[] {
   const issues: RuleIssue[] = []
-  const frames = figma.currentPage.children.filter(
-    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
-  )
+  const frames = figma.currentPage.children.filter((c): c is FrameNode => c.type === 'FRAME')
 
   for (const frame of frames) {
     const spacingValues: Map<number, SceneNode[]> = new Map()
@@ -285,9 +276,7 @@ function checkSpacingConsistency(): RuleIssue[] {
 
 function checkColorTokenUsage(): RuleIssue[] {
   const issues: RuleIssue[] = []
-  const frames = figma.currentPage.children.filter(
-    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
-  )
+  const frames = figma.currentPage.children.filter((c): c is FrameNode => c.type === 'FRAME')
 
   for (const frame of frames) {
     const unstyledNodes: SceneNode[] = []
@@ -350,9 +339,7 @@ function getNearestBackgroundColor(node: SceneNode): { r: number; g: number; b: 
 
 function checkContrastRatio(): RuleIssue[] {
   const issues: RuleIssue[] = []
-  const frames = figma.currentPage.children.filter(
-    (c): c is FrameNode | SectionNode => c.type === 'FRAME' || c.type === 'SECTION'
-  )
+  const frames = figma.currentPage.children.filter((c): c is FrameNode => c.type === 'FRAME')
 
   for (const frame of frames) {
     const failingNodes: { node: SceneNode; ratio: number }[] = []
@@ -581,7 +568,10 @@ async function fetchFigmaFile(
     })
 
     if (!response.ok) {
-      console.error(`Failed to fetch file ${fileKey}: ${response.status}`)
+      figma.ui.postMessage({
+        type: 'scan-warning',
+        payload: `Could not load library file (${response.status}). Check that the URL is correct and your token has access.`,
+      })
       return null
     }
 
@@ -625,7 +615,11 @@ async function fetchFigmaFile(
 
     return { name: data.name, components, fingerprints }
   } catch (err) {
-    console.error(`Error fetching file ${fileKey}:`, err)
+    const message =
+      err instanceof TypeError
+        ? 'Network error — check your internet connection.'
+        : `Could not load library file: ${err}`
+    figma.ui.postMessage({ type: 'scan-warning', payload: message })
     return null
   }
 }
@@ -661,7 +655,10 @@ async function fetchTeamProjects(
 ): Promise<{ id: string; name: string }[]> {
   const response = await fetchWithRetry(`https://api.figma.com/v1/teams/${teamId}/projects`, token)
   if (!response.ok) {
-    console.error(`Failed to fetch team projects: ${response.status}`)
+    figma.ui.postMessage({
+      type: 'scan-warning',
+      payload: `Could not load team projects (${response.status}). Check your Team ID and token permissions.`,
+    })
     return []
   }
   const data = await response.json()
@@ -677,7 +674,10 @@ async function fetchProjectFiles(projectId: string, token: string): Promise<Team
     token
   )
   if (!response.ok) {
-    console.error(`Failed to fetch project files: ${response.status}`)
+    figma.ui.postMessage({
+      type: 'scan-warning',
+      payload: `Could not load project files (${response.status}).`,
+    })
     return []
   }
   const data = await response.json()
@@ -709,21 +709,31 @@ async function fetchFileFrames(
       token
     )
     if (!response.ok) {
-      console.error(`Failed to fetch file ${fileKey}: ${response.status}`)
+      figma.ui.postMessage({
+        type: 'scan-warning',
+        payload: `Could not load file "${fileName}" (${response.status}).`,
+      })
       return []
     }
     const data = await response.json()
     if (!data.document) return []
     return extractFrameFingerprints(data.document, fileKey, data.name || fileName)
   } catch (err) {
-    console.error(`Error fetching file ${fileKey}:`, err)
+    const message =
+      err instanceof TypeError
+        ? 'Network error — check your internet connection.'
+        : `Could not load file "${fileName}": ${err}`
+    figma.ui.postMessage({ type: 'scan-warning', payload: message })
     return []
   }
 }
 
 // ==================== MAIN SCAN ====================
 
-async function performScan(settings: PluginSettings, enabledRules: Set<RuleId>): Promise<SelectedFrameScanResult> {
+async function performScan(
+  settings: PluginSettings,
+  enabledRules: Set<RuleId>
+): Promise<SelectedFrameScanResult> {
   scanCancelled = false
 
   if (!settings.token || !settings.teamId) {
@@ -957,6 +967,11 @@ function zoomToFrameId(id: string): void {
   if (node) {
     figma.currentPage.selection = [node as SceneNode]
     figma.viewport.scrollAndZoomIntoView([node as SceneNode])
+  } else {
+    figma.ui.postMessage({
+      type: 'scan-warning',
+      payload: 'Frame not found — it may have been deleted or moved.',
+    })
   }
 }
 
@@ -974,12 +989,15 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
   switch (msg.type) {
     case 'scan': {
       try {
-        const { settings: scanSettings, enabledRules: ruleIds } = msg.payload as {
+        const { settings: scanSettings, enabledRules: ruleIds } = (msg.payload as {
           settings: PluginSettings
           enabledRules: string[]
-        } || { settings: { token: '', libraryUrls: [], teamId: '' }, enabledRules: [] }
+        }) || { settings: { token: '', libraryUrls: [], teamId: '' }, enabledRules: [] }
         const enabledSet = new Set(ruleIds as RuleId[])
-        const results = await performScan(scanSettings || { token: '', libraryUrls: [], teamId: '' }, enabledSet)
+        const results = await performScan(
+          scanSettings || { token: '', libraryUrls: [], teamId: '' },
+          enabledSet
+        )
         figma.ui.postMessage({ type: 'scan-file-results', payload: results })
         // Cache frame scan results
         await figma.clientStorage.setAsync(CACHE_STORAGE_KEY, {
@@ -1023,6 +1041,11 @@ figma.ui.onmessage = async (msg: { type: string; payload?: unknown }) => {
       if (inspectNode && inspectNode.type === 'FRAME') {
         const detail = getFrameDetail(inspectNode as FrameNode)
         figma.ui.postMessage({ type: 'frame-detail', payload: detail })
+      } else {
+        figma.ui.postMessage({
+          type: 'scan-warning',
+          payload: 'Frame not found — it may have been deleted or moved.',
+        })
       }
       break
     }

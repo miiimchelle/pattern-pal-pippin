@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import type { ConnectionTestResult } from '../hooks/usePluginMessages';
+import { useState } from 'react'
+import type { ConnectionTestResult } from '../hooks/usePluginMessages'
 
 interface Props {
-  token: string;
-  libraryUrls: string[];
-  teamId: string;
-  onSave: (token: string, urls: string[], teamId: string) => void;
-  onBack: () => void;
-  onTestConnection?: (token: string, teamId: string) => void;
-  connectionTest?: ConnectionTestResult | null;
-  isTestingConnection?: boolean;
+  token: string
+  libraryUrls: string[]
+  teamId: string
+  onSave: (token: string, urls: string[], teamId: string) => void
+  onBack: () => void
+  onTestConnection?: (token: string, teamId: string) => void
+  connectionTest?: ConnectionTestResult | null
+  isTestingConnection?: boolean
 }
 
 export function Settings({
@@ -22,30 +22,40 @@ export function Settings({
   connectionTest,
   isTestingConnection,
 }: Props) {
-  const [token, setToken] = useState(initialToken);
-  const [urlsText, setUrlsText] = useState(initialUrls.join('\n'));
-  const [teamId, setTeamId] = useState(initialTeamId);
+  const [token, setToken] = useState(initialToken)
+  const [urlsText, setUrlsText] = useState(initialUrls.join('\n'))
+  const [teamId, setTeamId] = useState(initialTeamId)
 
-  const canSave = token.trim().length > 0 && teamId.trim().length > 0;
-  const canTest = token.trim().length > 0;
+  const canSave = token.trim().length > 0 && teamId.trim().length > 0
+  const canTest = token.trim().length > 0
 
   const handleSave = () => {
-    if (!canSave) return;
+    if (!canSave) return
     const urls = urlsText
       .split('\n')
       .map((u) => u.trim())
-      .filter((u) => u.length > 0);
-    onSave(token, urls, teamId);
-  };
+      .filter((u) => u.length > 0)
+    onSave(token, urls, teamId)
+  }
 
   const handleTestConnection = () => {
-    if (!canTest || !onTestConnection) return;
-    onTestConnection(token, teamId);
-  };
+    if (!canTest || !onTestConnection) return
+    onTestConnection(token, teamId)
+  }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto pattern-pal-body" role="region" aria-label="Plugin settings">
-      <form className="px-4 pt-1 pb-4 flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+    <div
+      className="flex-1 flex flex-col overflow-auto pattern-pal-body"
+      role="region"
+      aria-label="Plugin settings"
+    >
+      <form
+        className="px-4 pt-1 pb-4 flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleSave()
+        }}
+      >
         <h2 className="violations-header" style={{ marginBottom: 0 }}>
           Settings
         </h2>
@@ -66,10 +76,15 @@ export function Settings({
             Get from Figma &rarr; Settings &rarr; Personal access tokens
           </p>
           {connectionTest && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs" role="status" aria-live="polite">
+            <div
+              className="mt-1 flex items-center gap-1.5 text-xs"
+              role="status"
+              aria-live="polite"
+            >
               {connectionTest.tokenValid ? (
                 <span className="text-green-600">
-                  &#10003; Token valid{connectionTest.userName ? ` (${connectionTest.userName})` : ''}
+                  &#10003; Token valid
+                  {connectionTest.userName ? ` (${connectionTest.userName})` : ''}
                 </span>
               ) : (
                 <span className="text-red-600">&#10007; Invalid token</span>
@@ -79,7 +94,10 @@ export function Settings({
         </div>
 
         <div>
-          <label htmlFor="settings-team-id" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="settings-team-id"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Figma Team ID
           </label>
           <input
@@ -94,7 +112,11 @@ export function Settings({
             Numeric ID from your team URL: figma.com/files/team/&lt;team_id&gt;
           </p>
           {connectionTest && connectionTest.tokenValid && teamId.trim().length > 0 && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs" role="status" aria-live="polite">
+            <div
+              className="mt-1 flex items-center gap-1.5 text-xs"
+              role="status"
+              aria-live="polite"
+            >
               {connectionTest.teamIdValid ? (
                 <span className="text-green-600">&#10003; Team ID valid</span>
               ) : (
@@ -105,7 +127,10 @@ export function Settings({
         </div>
 
         <div>
-          <label htmlFor="settings-library-urls" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="settings-library-urls"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Library File URLs (one per line)
           </label>
           <textarea
@@ -119,22 +144,16 @@ export function Settings({
         </div>
 
         {connectionTest?.error && (
-          <div className="text-xs text-red-600" role="alert">{connectionTest.error}</div>
+          <div className="text-xs text-red-600" role="alert">
+            {connectionTest.error}
+          </div>
         )}
 
         <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="pattern-pal-btn flex-1"
-          >
+          <button onClick={handleSave} disabled={!canSave} className="pattern-pal-btn flex-1">
             Save Settings
           </button>
-          <button
-            type="button"
-            onClick={onBack}
-            className="pattern-pal-btn-secondary flex-1"
-          >
+          <button type="button" onClick={onBack} className="pattern-pal-btn-secondary flex-1">
             Cancel
           </button>
         </div>
@@ -151,5 +170,5 @@ export function Settings({
         )}
       </form>
     </div>
-  );
+  )
 }

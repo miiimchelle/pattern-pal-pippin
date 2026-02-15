@@ -1,9 +1,10 @@
 {
   "name": "Pattern Pal",
-  "id": "pattern-pal-ids-hackathon-2026",
+  "id": "1604962939171686795",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/index.html",
+  "documentAccess": "dynamic-page",
   "editorType": ["figma", "dev"],
   "capabilities": ["inspect"],
   "networkAccess": {
